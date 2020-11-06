@@ -1,0 +1,113 @@
+---
+title: "An Analytic Approach to The Theory of Moral Sentiments"
+subtitle: "A structural topic model of the text"
+author: "Michael Foley"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    highlight: haddock
+    fig_height: 3
+    fig_width: 5
+    fig_caption: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Setup
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(tidyverse)
+library(tidytext)
+library(textstem)     # lemmatize words
+#library(topicmodels)  # LDA
+library(stm)          # structure topic modeling
+```
+
+Load the TMS text from [Liberty Fund](https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple). I'll parse the text by part, section, chapter, and paragraph. TMS consists of seven parts with 0-4 sections per part and a total of 684 paragraphs.
+
+```{r message=FALSE, warning=FALSE}
+library(rvest)
+tms_url <- "https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple"
+
+tms_html <- read_html(tms_url)
+tms_text <- html_text(tms_html)
+
+tms_split <- str_split(tms_text, "\\n")
+tms_df <- data.frame(text = tms_split %>% unlist() %>% tail(-600) %>% head(-178)) %>%
+  mutate(
+    part = str_extract(text, regex("^Part\\s(First|Second|Third|Fourth|Fifth|Sixth|Seventh)")),
+    section = str_extract(text, regex("^SECTION\\s(IV|III|II|I)")),
+    section = if_else(part %in% c("Part Third", "Part Fourth", "Part Fifth"), "N/A", section),
+    chapter = str_extract(text, regex("^((CHAPTER\\s(VI|V|IV|III|II|I))|INTRODUCTION|CONCLUSION)"))
+  ) %>%
+  fill(part, section, chapter, .direction = "down") %>%
+  mutate(
+    chapter = if_else(part == "Part Sixth" & section == "SECTION I", "N/A", chapter),
+    chapter = if_else(part == "Part Sixth" & section == "SECTION III" & chapter == "CHAPTER III", "N/A", chapter),
+    chapter = if_else(part == "Part Seventh" & section == "SECTION I", "N/A", chapter),
+    chapter = if_else(part == "Part Seventh" & section == "SECTION IV", "N/A", chapter)
+  ) %>%
+  filter(!str_detect(text, regex("^Part\\s(First|Second|Third|Fourth|Fifth|Sixth|Seventh)")) &
+           !str_detect(text, regex("^SECTION\\s(IV|III|II|I)")) &
+           !str_detect(text, regex("^((CHAPTER\\s(VI|V|IV|III|II|I))|INTRODUCTION|CONCLUSION)")) &
+           !str_detect(text, regex("^Edition:\\scurrent;\\sPage:")) &
+           text != "") %>%
+  mutate(
+    part = fct_inorder(part),
+    section = fct_inorder(section),
+    section = fct_relevel(section, "N/A", after = 0),
+    chapter = fct_inorder(chapter),
+    chapter = fct_relevel(chapter, "INTRODUCTION", "N/A", after = 0),
+    chapter = fct_relevel(chapter, "CONCLUSION", after = Inf),
+    id = row_number()
+  ) %>%
+  group_by(part, section, chapter) %>%
+  mutate(one = 1, 
+         paragraph = cumsum(one)) %>%
+  ungroup() %>%
+  select(id, part, section, chapter, paragraph, text)
+
+tms_df %>% 
+  select(part, section) %>%
+  gtsummary::tbl_summary(by = "part") %>%
+  gtsummary::as_flex_table() %>%
+  flextable::set_caption("Paragraphs per part and section.")
+```
+
+```{r}
+my_stop_words <- c("abc123")
+
+tms_tokens <- tms_df %>%
+  unnest_tokens(output = "word", input = text, token = "words") %>%
+  mutate(word_stem = lemmatize_words(word)) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!word %in% my_stop_words)
+
+tms_tf_idf <- tms_tokens %>%
+  count(part, word_stem, sort = TRUE) %>%
+  bind_tf_idf(word_stem, part, n) %>%
+  group_by(part) %>%
+  slice_max(order_by = tf_idf, n = 7) %>%
+  ungroup()
+
+tms_tf_idf %>%
+#  filter(chapter <= 6) %>%
+  mutate(word_stem = reorder_within(word_stem, by = tf_idf, within = part)) %>%
+  ggplot(aes(word_stem, tf_idf, fill = as.factor(part))) +
+  geom_col(alpha = 0.8, show.legend = FALSE) +
+  scale_fill_manual(values = RColorBrewer::brewer.pal(n = 7, name = "Set2"), name = "Topic") +
+  facet_wrap(~ part, scales = "free", ncol = 3) +
+  scale_x_reordered() +
+  coord_flip() +
+  theme(strip.text=element_text(size=11)) +
+  labs(x = NULL, y = "tf-idf",
+       title = "Highest tf-idf words in The Theory of Moral Sentiments",
+       subtitle = "Individual parts focus on different subjects and philosophical elements")
+```
+
