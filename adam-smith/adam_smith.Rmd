@@ -19,7 +19,35 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Setup
+This project uses structural topic modeling to explore themes in Adam Smith's <u>The Theory of Moral Sentiments</u>. Treating each of the seven "parts" of the text as independent documents, overlapping themes emerge that tie the parts together.
+
+## Introduction
+
+Adam Smith's <u>The Theory of Moral Sentiments</u> (TMS) presents a theory of morality. Students of TMS discover its major themes through a holistic reading of the text, detailed parsing of individual sections, and placement in social context. An alternative approach made possible through machine learning algorithms is to treat text as a "bag of words" whose repeated usage within documents identify themes that unites the documents within the overall corpus.
+
+In the analysis that follows, I treat the 684 individual paragraphs of TMS as documents representing thoughts, ideas, and illustrations. TMS is thus the corpus composed of the 684 documents. I employ a structural topic model (STM) to identify the topics. STM is a particularly powerful model because it allows the introduction of document metadata to act as covariates that control independent features, much like the role of covariates of a linear regression model.
+
+### A brief overview of accepted themes
+
+[GradeSaver](https://www.gradesaver.com/the-theory-of-moral-sentiments/study-guide/themes) nicely summarizes seven major themes:
+
+* **Sympathy**. People judge the actions of others by imagining how they would feel if placed in the other person's situation. This stepping into different perspectives is *sympathy*.
+* **Appearances**. People are more interested in their own affairs than other people's affairs. As a result, others are more likely to sympathy with displays of emotion that are tempered to their own level of interest. The restraint if one's passions constitutes the virtue of temperance.
+* **Conscience**. One's conscience is an inner moral guide. It evaluates actions from the perspective of a third party observer. Through our conscience we are imagine our behavior will be judged by others before ever acting.
+* **Justice**. While other virtues are laudable, justice is what is owed to ourselves and to each other. It is therefore not worthy of praise, only of the absence of disdain.
+* **Harmony within Systems**. Smith celebrates the how the harmony of the system explemplifies the principles of intelligent design.
+* **The Difference in Magnitude between Positive and Negative Sentiments**. Risky situations usually present the actor with more to lose than to gain. Therefore, people are unlikely to take risks unless there is an expectation of great reward. Conferring glory onto others is one way society furnishes reward. Similarly, sympathy for loss tends to be greater than sympathy for unachieved gain.
+* **The Corruption of Moral Sentiments by Wealth**. Respect for wealth rewards pro-social behavior generally. However, the equivalence of wealth with virtue is a moral corruption.
+
+### Structural Topic Modeling
+
+STM is a generative model, meaning the researcher defines a data generating process for each document (paragraph) then uses the document text to find the most likely values for the model parameters. The generative model defines document-topic distributions, and word-topic distributions generating documents. Topic proportions (topical prevalences) in each document sum to one, and word probabilities in each topic (topical content) sum to one.
+
+The generative process for each document is a follows...
+
+## Method
+
+### Data
 
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
 library(tidyverse)
@@ -29,7 +57,7 @@ library(textstem)     # lemmatize words
 library(stm)          # structure topic modeling
 ```
 
-Load the TMS text from [Liberty Fund](https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple). I'll parse the text by part, section, chapter, and paragraph. TMS consists of seven parts with 0-4 sections per part and a total of 684 paragraphs.
+The complete text of TMS is available from the [Liberty Fund](https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple). The text includes an introduction by Dugald Stewart, and an appendix on the origin of languages, both of which I remove. I also parse out the part, section, chapter, and paragraph identifiers as metadata for the model. TMS consists of seven parts with 1-4 sections per part and a total of 55 chapters and 684 paragraphs.
 
 ```{r message=FALSE, warning=FALSE}
 library(rvest)
@@ -39,75 +67,128 @@ tms_html <- read_html(tms_url)
 tms_text <- html_text(tms_html)
 
 tms_split <- str_split(tms_text, "\\n")
-tms_df <- data.frame(text = tms_split %>% unlist() %>% tail(-600) %>% head(-178)) %>%
+tms_df <- data.frame(Text = tms_split %>% unlist() %>% tail(-600) %>% head(-178)) %>%
   mutate(
-    part = str_extract(text, regex("^Part\\s(First|Second|Third|Fourth|Fifth|Sixth|Seventh)")),
-    section = str_extract(text, regex("^SECTION\\s(IV|III|II|I)")),
-    section = if_else(part %in% c("Part Third", "Part Fourth", "Part Fifth"), "N/A", section),
-    chapter = str_extract(text, regex("^((CHAPTER\\s(VI|V|IV|III|II|I))|INTRODUCTION|CONCLUSION)"))
+    Part = str_extract(Text, regex("^Part\\s(First|Second|Third|Fourth|Fifth|Sixth|Seventh)")),
+    Section = str_extract(Text, regex("^SECTION\\s(IV|III|II|I)")),
+    Section = if_else(Part %in% c("Part Third", "Part Fourth", "Part Fifth"), "SECTION I", Section),
+    Chapter = str_extract(Text, regex("^((CHAPTER\\s(VI|V|IV|III|II|I))|INTRODUCTION|CONCLUSION)"))
   ) %>%
-  fill(part, section, chapter, .direction = "down") %>%
+  fill(Part, Section, Chapter, .direction = "down") %>%
   mutate(
-    chapter = if_else(part == "Part Sixth" & section == "SECTION I", "N/A", chapter),
-    chapter = if_else(part == "Part Sixth" & section == "SECTION III" & chapter == "CHAPTER III", "N/A", chapter),
-    chapter = if_else(part == "Part Seventh" & section == "SECTION I", "N/A", chapter),
-    chapter = if_else(part == "Part Seventh" & section == "SECTION IV", "N/A", chapter)
+    Chapter = if_else(Part == "Part Sixth" & Section == "SECTION I", "N/A", Chapter),
+    Chapter = if_else(Part == "Part Sixth" & Section == "SECTION III" & Chapter == "CHAPTER III", "N/A", Chapter),
+    Chapter = if_else(Part == "Part Seventh" & Section == "SECTION I", "N/A", Chapter),
+    Chapter = if_else(Part == "Part Seventh" & Section == "SECTION IV", "N/A", Chapter)
   ) %>%
-  filter(!str_detect(text, regex("^Part\\s(First|Second|Third|Fourth|Fifth|Sixth|Seventh)")) &
-           !str_detect(text, regex("^SECTION\\s(IV|III|II|I)")) &
-           !str_detect(text, regex("^((CHAPTER\\s(VI|V|IV|III|II|I))|INTRODUCTION|CONCLUSION)")) &
-           !str_detect(text, regex("^Edition:\\scurrent;\\sPage:")) &
-           text != "") %>%
+  filter(!str_detect(Text, regex("^Part\\s(First|Second|Third|Fourth|Fifth|Sixth|Seventh)")) &
+           !str_detect(Text, regex("^SECTION\\s(IV|III|II|I)")) &
+           !str_detect(Text, regex("^((CHAPTER\\s(VI|V|IV|III|II|I))|INTRODUCTION|CONCLUSION)")) &
+           !str_detect(Text, regex("^Edition:\\scurrent;\\sPage:")) &
+           Text != "") %>%
   mutate(
-    part = fct_inorder(part),
-    section = fct_inorder(section),
-    section = fct_relevel(section, "N/A", after = 0),
-    chapter = fct_inorder(chapter),
-    chapter = fct_relevel(chapter, "INTRODUCTION", "N/A", after = 0),
-    chapter = fct_relevel(chapter, "CONCLUSION", after = Inf),
+    Part = fct_inorder(Part),
+    Section = fct_inorder(Section),
+    Chapter = fct_inorder(Chapter),
+    Chapter = fct_relevel(Chapter, "INTRODUCTION", "N/A", after = 0),
+    Chapter = fct_relevel(Chapter, "CONCLUSION", after = Inf),
     id = row_number()
   ) %>%
-  group_by(part, section, chapter) %>%
+  group_by(Part, Section, Chapter) %>%
   mutate(one = 1, 
-         paragraph = cumsum(one)) %>%
+         Paragraph = cumsum(one)) %>%
   ungroup() %>%
-  select(id, part, section, chapter, paragraph, text)
+  select(id, Part, Section, Chapter, Paragraph, Text)
 
 tms_df %>% 
-  select(part, section) %>%
-  gtsummary::tbl_summary(by = "part") %>%
-  gtsummary::as_flex_table() %>%
-  flextable::set_caption("Paragraphs per part and section.")
+  mutate(Text = paste0(str_sub(Text, 1, 200), "...")) %>%
+  select(-id) %>%
+  head(6) %>%
+  flextable::flextable() %>%
+  flextable::autofit() %>%
+  flextable::set_caption("Sample of TMS text parsed for analysis.")
+
+tms_df %>%
+  count(Part, Section, Chapter) %>%
+  janitor::adorn_totals() %>%
+  flextable::flextable() %>%
+  flextable::autofit() %>%
+  flextable::set_caption("Paragaph coung per part, section, and chapter.")
 ```
 
+### Preparation
+
+The first step is to convert the text into a bag-of-words representation. I'll tokenize the paragraphs into individual words, so that each word of the book becomes a separate row of data. I will remove "stop words" such as *a*, *and*, and *across* that have high frequencies but limited value for forming topics. I could also remove any any custom stop words that are not included in the standard dictionary of stop words, but for now I have not found any ubiquitous words that corrupt the model. I could also [lemmatize](https://en.wikipedia.org/wiki/Lemmatisation) the tokens, but I will *not* based on [this advice](http://www.cs.cornell.edu/~xanda/winlp2017.pdf).  
+
 ```{r}
-my_stop_words <- c("abc123")
+#my_stop_words <- c("abc123")
 
 tms_tokens <- tms_df %>%
-  unnest_tokens(output = "word", input = text, token = "words") %>%
-  mutate(word_stem = lemmatize_words(word)) %>%
-  anti_join(stop_words, by = "word") %>%
-  filter(!word %in% my_stop_words)
+  unnest_tokens(output = "word", input = Text, token = "words") %>%
+#  mutate(word = lemmatize_words(word)) %>%
+  anti_join(stop_words, by = "word") # %>%
+#  filter(!word %in% my_stop_words)
 
+tms_tokens %>% 
+  select(`Part ` = Part, everything(), -id) %>%
+  head(6) %>%
+  flextable::flextable() %>%
+  flextable::autofit() %>%
+  flextable::set_caption("Sample of data after tokenization into a \"bag-of-words\".")
+```
+
+At this point I can form an initial impression of the data with the TF-IDF statistic. A term's (word's) frequency (TF) is its proportion of the terms in the document. The inverse document frequency (IDF) is the log of the inverse ratio of documents in which the term appears. The product of TF and IDF (TF-IDF) indicates how important a term is to a document within the corpus. For this project I will treat the individual paragraphs of TMS as documents with the TMS corpus. For each paragraph in TMS, each word's TF-IDF increases with its frequency in the paragraph and decreases with the number of paragraphs in which it appears.
+
+```{r}
 tms_tf_idf <- tms_tokens %>%
-  count(part, word_stem, sort = TRUE) %>%
-  bind_tf_idf(word_stem, part, n) %>%
-  group_by(part) %>%
-  slice_max(order_by = tf_idf, n = 7) %>%
+  count(id, word, sort = TRUE) %>%
+  bind_tf_idf(word, id, n) %>%
+  group_by(id) %>%
+  slice_max(order_by = tf_idf, n = 5, with_ties = FALSE) %>%
   ungroup()
 
 tms_tf_idf %>%
-#  filter(chapter <= 6) %>%
-  mutate(word_stem = reorder_within(word_stem, by = tf_idf, within = part)) %>%
-  ggplot(aes(word_stem, tf_idf, fill = as.factor(part))) +
+  filter(id <= 6) %>%
+  mutate(word = reorder_within(word, by = tf_idf, within = id)) %>%
+  ggplot(aes(x = word, y = tf_idf, fill = as.factor(id))) +
   geom_col(alpha = 0.8, show.legend = FALSE) +
-  scale_fill_manual(values = RColorBrewer::brewer.pal(n = 7, name = "Set2"), name = "Topic") +
-  facet_wrap(~ part, scales = "free", ncol = 3) +
+  scale_fill_manual(values = RColorBrewer::brewer.pal(n = 6, name = "Set2"), name = "Topic") +
+  facet_wrap(~ id, scales = "free_y", ncol = 3) +
   scale_x_reordered() +
   coord_flip() +
   theme(strip.text=element_text(size=11)) +
-  labs(x = NULL, y = "tf-idf",
-       title = "Highest tf-idf words in The Theory of Moral Sentiments",
-       subtitle = "Individual parts focus on different subjects and philosophical elements")
+  labs(x = NULL, y = NULL,
+       title = "Top TF-IDF words in TMS, first six paragraphs",
+       subtitle = "Suggesting thematic elements covered in each Paragraph")
 ```
 
+The last setup step is to create a sparse matrix with one row per paragraph (684 rows), one column per word (7,136 cols), with cell values equal to the word's frequency count. Now the data is ready for modeling.
+
+```{r results='hide'}
+tms_sparse <- tms_tokens %>%
+  count(id, word, sort = TRUE) %>%
+  cast_sparse(id, word, n)
+dim(tms_sparse)
+```
+
+### Estimation
+
+```{r}
+tms_k <- searchK(tms_sparse, K = c(7, 10)), prevalence =~ rating + s(day), data = meta)
+
+```
+
+
+## Results
+descriptive stats, analysis
+
+## Coinclusions an dlimitations.
+
+
+
+
+
+
+## The STM Model
+
+Topical prevalence captures how much each topic contributes to a document. Because different documents come from different sources, it is natural to want to allow this prevalence to vary with metadata that we have about document sources. We will let prevalence be a function of the “rating” variable, which is coded as either “Liberal” or “Conservative,” and the variable “day.” which is an integer measure of days running from the first to the last day of 2008. 
