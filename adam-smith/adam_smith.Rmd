@@ -126,7 +126,8 @@ The first step is to convert the text into a bag-of-words representation. I'll t
 tms_tokens <- tms_df %>%
   unnest_tokens(output = "word", input = Text, token = "words") %>%
 #  mutate(word = lemmatize_words(word)) %>%
-  anti_join(stop_words, by = "word") # %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!str_detect(word, "[0-9]+"))
 #  filter(!word %in% my_stop_words)
 
 tms_tokens %>% 
@@ -173,9 +174,40 @@ dim(tms_sparse)
 
 ### Estimation
 
-```{r}
-tms_k <- searchK(tms_sparse, K = c(7, 10)), prevalence =~ rating + s(day), data = meta)
+```{r results=`hide`}
+#  tms_proc <- textProcessor(
+#   documents = tms_df$Text, 
+#   metadata = tms_df %>% select(-id, -Text),
+#   removestopwords = TRUE,
+#   removenumbers = TRUE,
+#   removepunctuation = TRUE,
+#   stem = FALSE
+# )
+# 
+# tms_prep <- prepDocuments(tms_proc$documents, tms_proc$vocab, tms_proc$meta)
+# 
+# tms_stm <- stm(
+#   documents = tms_prep$documents, 
+#   vocab = tms_prep$vocab, 
+#   K = 0,  # let algorithm select K
+#   prevalence =~ Part + Section + Chapter,
+#   data = tms_prep$meta,
+#   init.type = "Spectral"
+# )
+```
 
+```{r}
+tms_stm
+```
+```{r}
+tms_stm <- stm(
+  tms_sparse, 
+  K = 0, 
+  prevalence =~ Part + Section + Chapter,
+  data = tms_df,
+  init.type = "Spectral", 
+  verbose = FALSE
+)
 ```
 
 
