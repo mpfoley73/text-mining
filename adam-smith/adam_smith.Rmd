@@ -19,29 +19,29 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This project uses structural topic modeling to explore themes in Adam Smith's <u>The Theory of Moral Sentiments</u>. Treating each of the seven "parts" of the text as independent documents, overlapping themes emerge that tie the parts together.
+This project uses structural topic modeling to explore themes in Adam Smith's <u>The Theory of Moral Sentiments</u>. Treating each of the 55 chapters of the text as independent documents, overlapping themes emerge that tie the parts together.
 
 ## Introduction
 
-Adam Smith's <u>The Theory of Moral Sentiments</u> (TMS) presents a theory of morality. Students of TMS discover its major themes through a holistic reading of the text, detailed parsing of individual sections, and placement in social context. An alternative approach made possible through machine learning algorithms is to treat text as a "bag of words" whose repeated usage within documents identify themes that unites the documents within the overall corpus.
+Students of Adam Smith's <u>The Theory of Moral Sentiments</u> (TMS) discover its major themes through a holistic reading of the text, detailed parsing of individual sections, and placement in social context. An alternative approach made possible through machine learning algorithms is to treat the text as a "bag of words" in which repeated usage within and across sub-sections identifies themes that unite the overall book.
 
-In the analysis that follows, I treat the 684 individual paragraphs of TMS as documents representing thoughts, ideas, and illustrations. TMS is thus the corpus composed of the 684 documents. I employ a structural topic model (STM) to identify the topics. STM is a particularly powerful model because it allows the introduction of document metadata to act as covariates that control independent features, much like the role of covariates of a linear regression model.
+In the analysis that follows, I treat the 55 chapters of TMS as "documents" representing thoughts, ideas, and illustrations of the TMS "corpus". I employ a structural topic model (STM) to identify the topics.
 
 ### A brief overview of accepted themes
 
-[GradeSaver](https://www.gradesaver.com/the-theory-of-moral-sentiments/study-guide/themes) nicely summarizes seven major themes:
+I found a nice synopsis of seven major themes on [GradeSaver](https://www.gradesaver.com/the-theory-of-moral-sentiments/study-guide/themes):
 
-* **Sympathy**. People judge the actions of others by imagining how they would feel if placed in the other person's situation. This stepping into different perspectives is *sympathy*.
-* **Appearances**. People are more interested in their own affairs than other people's affairs. As a result, others are more likely to sympathy with displays of emotion that are tempered to their own level of interest. The restraint if one's passions constitutes the virtue of temperance.
+* **Sympathy**. People judge the actions of others by imagining how they would feel if placed in the other's situation. This stepping into different perspectives is *sympathy*.
+* **Appearances**. People are more interested in their own affairs over others'. As a result, others are more likely to sympathize with displays of emotion that are tempered to their own level of interest. The restraint of one's passions constitutes the virtue of *temperance*.
 * **Conscience**. One's conscience is an inner moral guide. It evaluates actions from the perspective of a third party observer. Through our conscience we are imagine our behavior will be judged by others before ever acting.
-* **Justice**. While other virtues are laudable, justice is what is owed to ourselves and to each other. It is therefore not worthy of praise, only of the absence of disdain.
-* **Harmony within Systems**. Smith celebrates the how the harmony of the system explemplifies the principles of intelligent design.
-* **The Difference in Magnitude between Positive and Negative Sentiments**. Risky situations usually present the actor with more to lose than to gain. Therefore, people are unlikely to take risks unless there is an expectation of great reward. Conferring glory onto others is one way society furnishes reward. Similarly, sympathy for loss tends to be greater than sympathy for unachieved gain.
+* **Justice**. While other virtues are laudable, justice is what is *owed* to ourselves and to each other. It is therefore not worthy of praise, only of the absence of disdain.
+* **Harmony within Systems**. Smith celebrates how the harmony of the system exemplifies the principles of intelligent design.
+* **The Difference in Magnitude between Positive and Negative Sentiments**. Risky situations usually present the actor with more to lose than to gain. Therefore, people are unlikely to take risks unless there is an expectation of great reward. Conferring glory is one way society furnishes reward. Similarly, sympathy for loss tends to be greater than sympathy for unachieved gain.
 * **The Corruption of Moral Sentiments by Wealth**. Respect for wealth rewards pro-social behavior generally. However, the equivalence of wealth with virtue is a moral corruption.
 
 ### Structural Topic Modeling
 
-STM is a generative model, meaning the researcher defines a data generating process for each document (paragraph) then uses the document text to find the most likely values for the model parameters. The generative model defines document-topic distributions, and word-topic distributions generating documents. Topic proportions (topical prevalences) in each document sum to one, and word probabilities in each topic (topical content) sum to one.
+STM is a generative model, meaning the researcher defines a data generating process for each document (TMS chapter for this project) then uses the document text to find the most likely values for the model parameters. The generative model defines document-topic distributions, and word-topic distributions generating documents. The topic proportions (topical prevalences) in each document sum to one, and word probabilities in each topic (topical content) sum to one.
 
 The generative process for each document is a follows...
 
@@ -52,22 +52,26 @@ The generative process for each document is a follows...
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
 library(tidyverse)
 library(tidytext)
-library(textstem)     # lemmatize words
-#library(topicmodels)  # LDA
+#library(textstem)     # lemmatize words (not used)
 library(stm)          # structure topic modeling
+library(furrr)        # future_map
 ```
 
-The complete text of TMS is available from the [Liberty Fund](https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple). The text includes an introduction by Dugald Stewart, and an appendix on the origin of languages, both of which I remove. I also parse out the part, section, chapter, and paragraph identifiers as metadata for the model. TMS consists of seven parts with 1-4 sections per part and a total of 55 chapters and 684 paragraphs.
+The complete text of TMS is available from the [Liberty Fund](https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple). The text includes an introduction by Dugald Stewart, and an appendix on the origin of languages, both of which I removed. I also parsed out the part, section, and chapter identifiers as metadata for the model. TMS consists of seven parts with 1-4 sections per part and a total of 55 chapters.
 
 ```{r message=FALSE, warning=FALSE}
 library(rvest)
+
 tms_url <- "https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple"
 
-tms_html <- read_html(tms_url)
-tms_text <- html_text(tms_html)
+tms_split <- read_html(tms_url) %>%
+  html_text() %>%
+  str_split(pattern = "\\n") %>%
+  unlist() %>% 
+  tail(-600) %>% 
+  head(-178)
 
-tms_split <- str_split(tms_text, "\\n")
-tms_df <- data.frame(Text = tms_split %>% unlist() %>% tail(-600) %>% head(-178)) %>%
+tms_paragraphs <- data.frame(Text = tms_split) %>%
   mutate(
     Part = str_extract(Text, regex("^Part\\s(First|Second|Third|Fourth|Fifth|Sixth|Seventh)")),
     Section = str_extract(Text, regex("^SECTION\\s(IV|III|II|I)")),
@@ -100,38 +104,40 @@ tms_df <- data.frame(Text = tms_split %>% unlist() %>% tail(-600) %>% head(-178)
   ungroup() %>%
   select(id, Part, Section, Chapter, Paragraph, Text)
 
-tms_df %>% 
+tms_chapters <- tms_paragraphs %>%
+  arrange(Paragraph) %>%
+  group_by(Part, Section, Chapter) %>%
+  mutate(Paragraphs = n(), 
+         Chapter_Text = str_flatten(Text)) %>%
+  ungroup() %>%
+  distinct(Part, Section, Chapter, Paragraphs, Text = Chapter_Text) %>%
+  mutate(id = row_number()) %>%
+  select(id, Part, Section, Chapter, Paragraphs, Text)
+
+tms_chapters %>% 
   mutate(Text = paste0(str_sub(Text, 1, 200), "...")) %>%
   select(-id) %>%
   head(6) %>%
   flextable::flextable() %>%
   flextable::autofit() %>%
   flextable::set_caption("Sample of TMS text parsed for analysis.")
-
-tms_df %>%
-  count(Part, Section, Chapter) %>%
-  janitor::adorn_totals() %>%
-  flextable::flextable() %>%
-  flextable::autofit() %>%
-  flextable::set_caption("Paragaph coung per part, section, and chapter.")
 ```
 
 ### Preparation
 
-The first step is to convert the text into a bag-of-words representation. I'll tokenize the paragraphs into individual words, so that each word of the book becomes a separate row of data. I will remove "stop words" such as *a*, *and*, and *across* that have high frequencies but limited value for forming topics. I could also remove any any custom stop words that are not included in the standard dictionary of stop words, but for now I have not found any ubiquitous words that corrupt the model. I could also [lemmatize](https://en.wikipedia.org/wiki/Lemmatisation) the tokens, but I will *not* based on [this advice](http://www.cs.cornell.edu/~xanda/winlp2017.pdf).  
+The first step is to convert the text into a bag-of-words representation by tokenizing the paragraphs into individual words. Each word of TMS becomes a separate row of data described by its location in the book (part, section, chapter, paragaraph number). From this arrangement I remove "stop words" such as *a*, *and*, and *across* that occur frequently but hold no value for forming topics. Some analyses also [lemmatize](https://en.wikipedia.org/wiki/Lemmatisation) the tokens, but [this advice](http://www.cs.cornell.edu/~xanda/winlp2017.pdf) convinced me to leave the words intact.  
 
 ```{r}
-#my_stop_words <- c("abc123")
-
-tms_tokens <- tms_df %>%
+tms_tokens <- tms_chapters %>%
   unnest_tokens(output = "word", input = Text, token = "words") %>%
-#  mutate(word = lemmatize_words(word)) %>%
   anti_join(stop_words, by = "word") %>%
-  filter(!str_detect(word, "[0-9]+"))
-#  filter(!word %in% my_stop_words)
+  filter(!str_detect(word, "[0-9]+")) %>%
+  add_count(word) %>%
+  filter(n >= 10) %>%
+  select(-n)
 
 tms_tokens %>% 
-  select(`Part ` = Part, everything(), -id) %>%
+  select(`Part ` = Part, everything(), -id, -Paragraphs) %>%
   head(6) %>%
   flextable::flextable() %>%
   flextable::autofit() %>%
@@ -142,31 +148,32 @@ At this point I can form an initial impression of the data with the TF-IDF stati
 
 ```{r}
 tms_tf_idf <- tms_tokens %>%
-  count(id, word, sort = TRUE) %>%
-  bind_tf_idf(word, id, n) %>%
-  group_by(id) %>%
+  count(Part, word, sort = TRUE) %>%
+  bind_tf_idf(word, Part, n) %>%
+  group_by(Part) %>%
   slice_max(order_by = tf_idf, n = 5, with_ties = FALSE) %>%
   ungroup()
 
 tms_tf_idf %>%
-  filter(id <= 6) %>%
-  mutate(word = reorder_within(word, by = tf_idf, within = id)) %>%
-  ggplot(aes(x = word, y = tf_idf, fill = as.factor(id))) +
+  mutate(word = reorder_within(word, by = tf_idf, within = Part)) %>%
+  ggplot(aes(x = word, y = tf_idf, fill = as.factor(Part))) +
   geom_col(alpha = 0.8, show.legend = FALSE) +
-  scale_fill_manual(values = RColorBrewer::brewer.pal(n = 6, name = "Set2"), name = "Topic") +
-  facet_wrap(~ id, scales = "free_y", ncol = 3) +
+  scale_fill_manual(values = RColorBrewer::brewer.pal(n = 7, name = "Set2"), name = "Topic") +
+  facet_wrap(~ Part, scales = "free_y", ncol = 3) +
   scale_x_reordered() +
   coord_flip() +
   theme(strip.text=element_text(size=11)) +
   labs(x = NULL, y = NULL,
-       title = "Top TF-IDF words in TMS, first six paragraphs",
-       subtitle = "Suggesting thematic elements covered in each Paragraph")
+       title = "Top TF-IDF words in TMS",
+       subtitle = "Suggesting thematic elements covered in each part")
 ```
 
-The last setup step is to create a sparse matrix with one row per paragraph (684 rows), one column per word (7,136 cols), with cell values equal to the word's frequency count. Now the data is ready for modeling.
+The title Part Fifth, "OF THE INFLUENCE OF CUSTOM AND FASHION UPON THE SENTIMENTS OF MORAL APPROBATION AND DISAPPROBATION", helps explain the prominence of "custom" within that chapter and distinctiveness within the book.
+
+The last setup step is to create a sparse matrix with one row per paragraph (684 rows), one column per word (6,738 cols), with cell values equal to the word's frequency count. Now the data is ready for modeling.
 
 ```{r results='hide'}
-tms_sparse <- tms_tokens %>%
+tms_sparse <- tms_tokens %>% 
   count(id, word, sort = TRUE) %>%
   cast_sparse(id, word, n)
 dim(tms_sparse)
@@ -174,7 +181,27 @@ dim(tms_sparse)
 
 ### Estimation
 
-```{r results=`hide`}
+There is no "right" number of topics in a corpus, but there are diagnostic measures that can aid human
+judgment in the creation of well-performing model. By fitting models of varying numbers of topics, the diagnostic measures can be compared. 
+
+One diagnostic measure is the held-out likelihood. In this measure, the model is re-fit with random words removed from documents. Then the model estimates the probabilities that those words are in the documents. A better model will have higher probabilities on the held-out words. The highest held-out likelihood occurred at *K* = 20 topics. I don't understand how the likelihood is measured. [This article](https://mimno.infosci.cornell.edu/info6150/readings/wallach09evaluation.pdf), as well as Section 8.1 of the [STM vignette](https://cran.r-project.org/web/packages/stm/vignettes/stmVignette.pdf) may help.
+
+A second diagnostic measure is the residuals. If residuals have a high variance, more topics may be needed.
+
+The lower bound is the approximation to the lower bound on the marginal likelihood. You can think of it as the model's internal measure of fit. Convergence is monitored by the change in the approximate
+variational lower bound. Once the bound has a small enough change between iterations, the
+model is considered converged.
+
+We then examined the set of estimated models that fit the data particularly well and compared
+them using their scores on average semantic coherence and exclusivity. (Coherence measures the internal consistency of the topics
+and exclusivity captures the extent to which topics in the model can be differentiated from each other.) Our initial goal was to
+identify the set of models that were not strictly dominated by other models in terms of semantic coherence and exclusivity. Then,
+using our own judgment, we examined the cohesiveness and exclusivity of the topics in the set of non-dominated models, that is,
+those models located on the 'semantic coherence-exclusivity frontier' (Roberts et al., 2014). This process resulted in choosing 16 for
+the number of topics. We verified that all of our substantive findings were robust to small variations in the number of estimated
+topics.
+
+```{r}
 #  tms_proc <- textProcessor(
 #   documents = tms_df$Text, 
 #   metadata = tms_df %>% select(-id, -Text),
@@ -197,17 +224,67 @@ dim(tms_sparse)
 ```
 
 ```{r}
-tms_stm
+plan(multiprocess)
+
+stm_mdls <- data.frame(K = c(4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24)) %>%
+  mutate(mdl = future_map(K, ~stm(tms_sparse, K = ., verbose = FALSE),
+                          .options = furrr_options(seed = 123)))
 ```
+
 ```{r}
-tms_stm <- stm(
-  tms_sparse, 
-  K = 0, 
-  prevalence =~ Part + Section + Chapter,
-  data = tms_df,
-  init.type = "Spectral", 
-  verbose = FALSE
-)
+heldout <- make.heldout(tms_sparse)
+
+k_result <- stm_mdls %>%
+  mutate(exclusivity = map(mdl, exclusivity),
+         semantic_coherence = map(mdl, semanticCoherence, tms_sparse),
+         eval_heldout = map(mdl, eval.heldout, heldout$missing),
+         residual = map(mdl, checkResiduals, tms_sparse),
+         bound =  map_dbl(mdl, function(x) max(x$convergence$bound)),
+         lfact = map_dbl(mdl, function(x) lfactorial(x$settings$dim$K)),
+         lbound = bound + lfact,
+         iterations = map_dbl(mdl, function(x) length(x$convergence$bound)))
+
+k_result %>%
+  transmute(K,
+            `Lower bound` = lbound,
+            Residuals = map_dbl(residual, "dispersion"),
+            `Semantic coherence` = map_dbl(semantic_coherence, mean),
+            `Held-out likelihood` = map_dbl(eval_heldout, "expected.heldout")) %>%
+  gather(Metric, Value, -K) %>%
+  ggplot(aes(K, Value, color = Metric)) +
+  geom_line(size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  facet_wrap(~Metric, scales = "free_y") +
+  labs(x = "K (number of topics)",
+       y = NULL,
+       title = "Model diagnostics by number of topics",
+       subtitle = "These diagnostics indicate that a good number of topics would be around 18")
+```
+
+```{r}
+k_result %>%
+  select(K, exclusivity, semantic_coherence) %>%
+  filter(K %in% c(5, 10, 15)) %>%
+  unnest(-K) %>%
+  mutate(K = as.factor(K)) %>%
+  ggplot(aes(semantic_coherence, exclusivity, color = K)) +
+  geom_point(size = 2, alpha = 0.7) +
+  labs(x = "Semantic coherence",
+       y = "Exclusivity",
+       title = "Comparing exclusivity and semantic coherence",
+       subtitle = "Models with fewer topics have higher semantic coherence for more topics, but lower exclusivity")
+```
+
+
+```{r}
+# tms_stm <- stm(
+#   tms_sparse, 
+#   K = 0, 
+# #  prevalence =~ Part,
+#   data = tms_df,
+#   init.type = "Spectral", 
+#   verbose = FALSE
+# )
+# tms_stm
 ```
 
 
