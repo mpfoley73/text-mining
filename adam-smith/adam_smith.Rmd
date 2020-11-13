@@ -52,6 +52,7 @@ The generative process for each document is a follows...
 ```{r message=FALSE, warning=FALSE, echo=FALSE}
 library(tidyverse)
 library(tidytext)
+library(ggthemes)
 #library(textstem)     # lemmatize words (not used)
 library(stm)          # structure topic modeling
 library(furrr)        # future_map
@@ -120,12 +121,12 @@ tms_chapters %>%
   head(6) %>%
   flextable::flextable() %>%
   flextable::autofit() %>%
-  flextable::set_caption("Sample of TMS text parsed for analysis.")
+  flextable::set_caption("TMS data parsed for analysis - first six records.")
 ```
 
 ### Preparation
 
-The first step is to convert the text into a bag-of-words representation by tokenizing the paragraphs into individual words. Each word of TMS becomes a separate row of data described by its location in the book (part, section, chapter, paragaraph number). From this arrangement I remove "stop words" such as *a*, *and*, and *across* that occur frequently but hold no value for forming topics. Some analyses also [lemmatize](https://en.wikipedia.org/wiki/Lemmatisation) the tokens, but [this advice](http://www.cs.cornell.edu/~xanda/winlp2017.pdf) convinced me to leave the words intact.  
+The first step is to convert the text into a bag-of-words representation by tokenizing the chapters into individual words. Each word of TMS becomes a separate row of data described by its location in the book (part, section, chapter). There are 150,905 words in TMS (8,155 distinct). From this arrangement I removed "stop words" such as *a*, *and*, and *across* that occur frequently but are irrelevant to topics. The footnote number identifiers also appear as tokens, so I removed them too. That reduces the word count to 49,901 (7,270 distinct). Some analyses also [lemmatize](https://en.wikipedia.org/wiki/Lemmatisation) the tokens, but [that is not always helpful](http://www.cs.cornell.edu/~xanda/winlp2017.pdf) so I left the words intact. Finally, I removed the very infrequently appearing words that will drag down computation time without contributing to theme formation. I set the lower frequency limit to 10 appearances in TMS. This brings the word count down to 34,941 words (1,090 distinct). You can see from the first few records how the first line of text, "How selfish soever man may be supposed, there are evidently some principles in his nature", tokenizes to just six words.
 
 ```{r}
 tms_tokens <- tms_chapters %>%
@@ -141,12 +142,12 @@ tms_tokens %>%
   head(6) %>%
   flextable::flextable() %>%
   flextable::autofit() %>%
-  flextable::set_caption("Sample of data after tokenization into a \"bag-of-words\".")
+  flextable::set_caption("TMS data tokenized - first line of text.")
 ```
 
-At this point I can form an initial impression of the data with the TF-IDF statistic. A term's (word's) frequency (TF) is its proportion of the terms in the document. The inverse document frequency (IDF) is the log of the inverse ratio of documents in which the term appears. The product of TF and IDF (TF-IDF) indicates how important a term is to a document within the corpus. For this project I will treat the individual paragraphs of TMS as documents with the TMS corpus. For each paragraph in TMS, each word's TF-IDF increases with its frequency in the paragraph and decreases with the number of paragraphs in which it appears.
+At this point I can form an initial impression of the data with the TF-IDF statistic. A term's frequency (TF) is its proportion of the terms in the document. The inverse document frequency (IDF) is the log of the inverse ratio of documents in which the term appears. The product of TF and IDF (TF-IDF) indicates how important a term is to a document within the corpus. For this project I will treat the individual paragraphs of TMS as documents with the TMS corpus. For each paragraph in TMS, each word's TF-IDF increases with its frequency in the paragraph and decreases with the number of paragraphs in which it appears.
 
-```{r}
+```{r fig.width=6.5, fig.height=5}
 tms_tf_idf <- tms_tokens %>%
   count(Part, word, sort = TRUE) %>%
   bind_tf_idf(word, Part, n) %>%
@@ -158,11 +159,12 @@ tms_tf_idf %>%
   mutate(word = reorder_within(word, by = tf_idf, within = Part)) %>%
   ggplot(aes(x = word, y = tf_idf, fill = as.factor(Part))) +
   geom_col(alpha = 0.8, show.legend = FALSE) +
-  scale_fill_manual(values = RColorBrewer::brewer.pal(n = 7, name = "Set2"), name = "Topic") +
+  scale_fill_few() +
   facet_wrap(~ Part, scales = "free_y", ncol = 3) +
   scale_x_reordered() +
+  scale_y_continuous(guide = guide_axis(check.overlap = TRUE)) +
   coord_flip() +
-  theme(strip.text=element_text(size=11)) +
+  theme_minimal() +
   labs(x = NULL, y = NULL,
        title = "Top TF-IDF words in TMS",
        subtitle = "Suggesting thematic elements covered in each part")
@@ -170,13 +172,21 @@ tms_tf_idf %>%
 
 The title Part Fifth, "OF THE INFLUENCE OF CUSTOM AND FASHION UPON THE SENTIMENTS OF MORAL APPROBATION AND DISAPPROBATION", helps explain the prominence of "custom" within that chapter and distinctiveness within the book.
 
-The last setup step is to create a sparse matrix with one row per paragraph (684 rows), one column per word (6,738 cols), with cell values equal to the word's frequency count. Now the data is ready for modeling.
+Next I pivoted the data into a *sparse matrix* with one row per chapter (55 rows), one column per word (1,090 cols), with cell values equal to the word's frequency count. The matrix is `r scales::percent(sum(tms_sparse %>% as.matrix() == 0) / (55*1090), accuracy = 1)` zeros. Now the data is ready for modeling.
 
 ```{r results='hide'}
-tms_sparse <- tms_tokens %>% 
-  count(id, word, sort = TRUE) %>%
-  cast_sparse(id, word, n)
-dim(tms_sparse)
+tms_cnt <- tms_tokens %>% count(id, word)
+
+tms_sparse <- tms_cnt %>% cast_sparse(id, word, n)
+
+tms_cnt %>%
+  ggplot(aes(x = word, y = id, fill = n)) +
+  geom_tile(show.legend = FALSE, alpha = 0.6) +
+  theme_minimal() +
+  theme(axis.text.x = element_blank()) +
+  labs(y = "Chapter",
+       title = "TMS Sparse Matrix",
+       subtitle = "Heat map of word frequencies.")
 ```
 
 ### Estimation
@@ -301,3 +311,7 @@ descriptive stats, analysis
 ## The STM Model
 
 Topical prevalence captures how much each topic contributes to a document. Because different documents come from different sources, it is natural to want to allow this prevalence to vary with metadata that we have about document sources. We will let prevalence be a function of the “rating” variable, which is coded as either “Liberal” or “Conservative,” and the variable “day.” which is an integer measure of days running from the first to the last day of 2008. 
+
+[Toward understanding 17th century English culture: A structural
+topic model of Francis Bacon's ideas](https://www.econ.umd.edu/sites/www.econ.umd.edu/files/users/pmurrell/Bacon_Grajzl-MurrellJCE2019.pdf)
+
