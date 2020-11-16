@@ -145,34 +145,49 @@ tms_tokens %>%
   flextable::set_caption("TMS data tokenized - first line of text.")
 ```
 
-At this point I can form an initial impression of the data with the TF-IDF statistic. A term's frequency (TF) is its proportion of the terms in the document. The inverse document frequency (IDF) is the log of the inverse ratio of documents in which the term appears. The product of TF and IDF (TF-IDF) indicates how important a term is to a document within the corpus. For this project I will treat the individual paragraphs of TMS as documents with the TMS corpus. For each paragraph in TMS, each word's TF-IDF increases with its frequency in the paragraph and decreases with the number of paragraphs in which it appears.
+At this point the words can reveal some of their relative importance through their TF-IDF statistic. A term's frequency (TF) is its proportion of the terms in the document. The inverse document frequency (IDF) is the log of the inverse ratio of documents in which the term appears. The product of TF and IDF (TF-IDF) indicates how important a term is to a document within the corpus. For this project the chapters of TMS are the documents within the TMS corpus. For each chapter, each word's TF-IDF increases with its frequency in the chapter and decreases with the number of chapters in which it appears.
+
+```{r}
+tms_tokens %>%
+  count(id, word, sort = TRUE) %>%
+  bind_tf_idf(word, id, n) %>%
+  filter(id == 1) %>%
+  ggplot(aes(x = tf, y = idf, size = tf_idf, label = word, color = tf_idf)) +
+  ?geom_point(alpha = 0.2, show.legend = FALSE, color = few_pal()(8)[3]) +
+  geom_text(check_overlap = TRUE) +
+  theme_minimal() +
+  labs(title = "TF-IDF of the first chapter of TMS, Of Sympathy",
+       subtitle = "Larger words are most 'important'.")
+```
+
 
 ```{r fig.width=6.5, fig.height=5}
 tms_tf_idf <- tms_tokens %>%
-  count(Part, word, sort = TRUE) %>%
-  bind_tf_idf(word, Part, n) %>%
-  group_by(Part) %>%
+  filter(Part == "Part First") %>%
+  count(Chapter, word, sort = TRUE) %>%
+  bind_tf_idf(word, Chapter, n) %>%
+  group_by(Chapter) %>%
   slice_max(order_by = tf_idf, n = 5, with_ties = FALSE) %>%
   ungroup()
 
 tms_tf_idf %>%
-  mutate(word = reorder_within(word, by = tf_idf, within = Part)) %>%
-  ggplot(aes(x = word, y = tf_idf, fill = as.factor(Part))) +
+  mutate(word = reorder_within(word, by = tf_idf, within = Chapter)) %>%
+  ggplot(aes(x = word, y = tf_idf, fill = as.factor(Chapter))) +
   geom_col(alpha = 0.8, show.legend = FALSE) +
   scale_fill_few() +
-  facet_wrap(~ Part, scales = "free_y", ncol = 3) +
+  facet_wrap(~ Chapter, scales = "free_y", ncol = 3) +
   scale_x_reordered() +
   scale_y_continuous(guide = guide_axis(check.overlap = TRUE)) +
   coord_flip() +
   theme_minimal() +
   labs(x = NULL, y = NULL,
        title = "Top TF-IDF words in TMS",
-       subtitle = "Suggesting thematic elements covered in each part")
+       subtitle = "Suggesting thematic elements covered in each chapter")
 ```
 
 The title Part Fifth, "OF THE INFLUENCE OF CUSTOM AND FASHION UPON THE SENTIMENTS OF MORAL APPROBATION AND DISAPPROBATION", helps explain the prominence of "custom" within that chapter and distinctiveness within the book.
 
-Next I pivoted the data into a *sparse matrix* with one row per chapter (55 rows), one column per word (1,090 cols), with cell values equal to the word's frequency count. The matrix is `r scales::percent(sum(tms_sparse %>% as.matrix() == 0) / (55*1090), accuracy = 1)` zeros. Now the data is ready for modeling.
+Next I pivoted the data into a *sparse matrix* with one row per chapter (55 rows), one column per word (1,090 cols), with cell values equal to the word's frequency count. 
 
 ```{r results='hide'}
 tms_cnt <- tms_tokens %>% count(id, word)
@@ -188,6 +203,8 @@ tms_cnt %>%
        title = "TMS Sparse Matrix",
        subtitle = "Heat map of word frequencies.")
 ```
+
+The matrix is `r scales::percent(sum(tms_sparse %>% as.matrix() == 0) / (55*1090), accuracy = 1)` zeros. Now the data is ready for modeling.
 
 ### Estimation
 
