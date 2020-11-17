@@ -74,6 +74,7 @@ tms_split <- read_html(tms_url) %>%
 
 tms_paragraphs <- data.frame(Text = tms_split) %>%
   mutate(
+    Text = str_remove_all(Text, "Edition: current; Page: \\[[:digit:]+\\] "),
     Part = str_extract(Text, regex("^Part\\s(First|Second|Third|Fourth|Fifth|Sixth|Seventh)")),
     Section = str_extract(Text, regex("^SECTION\\s(IV|III|II|I)")),
     Section = if_else(Part %in% c("Part Third", "Part Fourth", "Part Fifth"), "SECTION I", Section),
@@ -145,47 +146,29 @@ tms_tokens %>%
   flextable::set_caption("TMS data tokenized - first line of text.")
 ```
 
-At this point the words can reveal some of their relative importance through their TF-IDF statistic. A term's frequency (TF) is its proportion of the terms in the document. The inverse document frequency (IDF) is the log of the inverse ratio of documents in which the term appears. The product of TF and IDF (TF-IDF) indicates how important a term is to a document within the corpus. For this project the chapters of TMS are the documents within the TMS corpus. For each chapter, each word's TF-IDF increases with its frequency in the chapter and decreases with the number of chapters in which it appears.
+At this point the words can reveal some of their relative importance through their TF-IDF statistic. A term's frequency (TF) is its proportion of the terms in the document. The inverse document frequency (IDF) is the log of the inverse ratio of documents in which the term appears. The product of TF and IDF (TF-IDF) indicates how important a term is to a document within the corpus. Below I treated the parts as the documents within the TMS corpus. For each part, each word's TF-IDF increases with its frequency within the part and decreases with the number of parts in which it appears.
 
-```{r}
-tms_tokens %>%
+```{r fig.width=8, fig.height=10}
+tms_tfidf <- tms_tokens %>%
   count(id, word, sort = TRUE) %>%
   bind_tf_idf(word, id, n) %>%
-  filter(id == 1) %>%
-  ggplot(aes(x = tf, y = idf, size = tf_idf, label = word, color = tf_idf)) +
-  ?geom_point(alpha = 0.2, show.legend = FALSE, color = few_pal()(8)[3]) +
-  geom_text(check_overlap = TRUE) +
+  inner_join(tms_chapters %>% select(-Text), by = "id")
+
+tms_tfidf %>%
+  group_by(Part, word) %>%
+  summarize(.groups = "drop", n = sum(n), tf = mean(tf), idf = mean(idf), tf_idf = mean(tf_idf)) %>%
+  ggplot(aes(x = tf, y = idf)) +
+  geom_point(aes(color = tf_idf, size = tf_idf), alpha = 0.6, show.legend = FALSE) +
+  geom_text(aes(label = word, size = tf_idf), 
+            color = "#666666", check_overlap = TRUE, show.legend = FALSE) +
+  scale_colour_gradient(low = "#cccccc", high = "#116530") +
   theme_minimal() +
-  labs(title = "TF-IDF of the first chapter of TMS, Of Sympathy",
-       subtitle = "Larger words are most 'important'.")
+  labs(title = "Average TF-IDF by Part of TMS",
+       subtitle = "Larger := more 'important'.") +
+  facet_wrap(~Part, ncol = 2)
 ```
 
-
-```{r fig.width=6.5, fig.height=5}
-tms_tf_idf <- tms_tokens %>%
-  filter(Part == "Part First") %>%
-  count(Chapter, word, sort = TRUE) %>%
-  bind_tf_idf(word, Chapter, n) %>%
-  group_by(Chapter) %>%
-  slice_max(order_by = tf_idf, n = 5, with_ties = FALSE) %>%
-  ungroup()
-
-tms_tf_idf %>%
-  mutate(word = reorder_within(word, by = tf_idf, within = Chapter)) %>%
-  ggplot(aes(x = word, y = tf_idf, fill = as.factor(Chapter))) +
-  geom_col(alpha = 0.8, show.legend = FALSE) +
-  scale_fill_few() +
-  facet_wrap(~ Chapter, scales = "free_y", ncol = 3) +
-  scale_x_reordered() +
-  scale_y_continuous(guide = guide_axis(check.overlap = TRUE)) +
-  coord_flip() +
-  theme_minimal() +
-  labs(x = NULL, y = NULL,
-       title = "Top TF-IDF words in TMS",
-       subtitle = "Suggesting thematic elements covered in each chapter")
-```
-
-The title Part Fifth, "OF THE INFLUENCE OF CUSTOM AND FASHION UPON THE SENTIMENTS OF MORAL APPROBATION AND DISAPPROBATION", helps explain the prominence of "custom" within that chapter and distinctiveness within the book.
+The word "custom" appears 47 times in Part Fifth of TMS - 23 times in Chapter I and 24 times in Chapter 2 - but only twice more in the rest of TMS (once in Part Second and once in Part Seventh). That gives "custom" a particularly high IDF for both chapters of Part Fifth. Within the Part Fifth chapters, "custom" appeared frequently - 4% of the words in chapter I and 2% of the words in chapter II. That gives "custom" a high TF in those chapters as well. Their products, TF-IDF, were therefore large, and their chapter-average in Part Fifth, makes "custom" an important word to Part Fifth.
 
 Next I pivoted the data into a *sparse matrix* with one row per chapter (55 rows), one column per word (1,090 cols), with cell values equal to the word's frequency count. 
 
