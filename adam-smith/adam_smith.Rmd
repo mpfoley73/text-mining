@@ -58,8 +58,6 @@ library(stm)          # structure topic modeling
 library(furrr)        # future_map
 ```
 
-The complete text of TMS is available from the [Liberty Fund](https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple). The text includes an introduction by Dugald Stewart, and an appendix on the origin of languages, both of which I removed. I also parsed out the part, section, and chapter identifiers as metadata for the model. TMS consists of seven parts with 1-4 sections per part and a total of 55 chapters.
-
 ```{r message=FALSE, warning=FALSE}
 library(rvest)
 
@@ -115,29 +113,37 @@ tms_chapters <- tms_paragraphs %>%
   distinct(Part, Section, Chapter, Paragraphs, Text = Chapter_Text) %>%
   mutate(id = row_number()) %>%
   select(id, Part, Section, Chapter, Paragraphs, Text)
+```
 
+The complete text of TMS is available from the [Liberty Fund](https://oll.libertyfund.org/titles/smith-the-theory-of-moral-sentiments-and-on-the-origins-of-languages-stewart-ed/simple). The text includes an introduction by Dugald Stewart, and an appendix on the origin of languages, both of which I removed. I cut the text into one record per chapter, and tagged the part, section, and chapter identifiers as metadata. TMS consists of seven parts with 1-4 sections per part and a total of 55 chapters.
+
+```{r}
 tms_chapters %>% 
   mutate(Text = paste0(str_sub(Text, 1, 200), "...")) %>%
   select(-id) %>%
   head(6) %>%
   flextable::flextable() %>%
   flextable::autofit() %>%
-  flextable::set_caption("TMS data parsed for analysis - first six records.")
+  flextable::set_caption("TMS cut into one record per chapter. First 6 records")
 ```
 
 ### Preparation
 
-The first step is to convert the text into a bag-of-words representation by tokenizing the chapters into individual words. Each word of TMS becomes a separate row of data described by its location in the book (part, section, chapter). There are 150,905 words in TMS (8,155 distinct). From this arrangement I removed "stop words" such as *a*, *and*, and *across* that occur frequently but are irrelevant to topics. The footnote number identifiers also appear as tokens, so I removed them too. That reduces the word count to 49,901 (7,270 distinct). Some analyses also [lemmatize](https://en.wikipedia.org/wiki/Lemmatisation) the tokens, but [that is not always helpful](http://www.cs.cornell.edu/~xanda/winlp2017.pdf) so I left the words intact. Finally, I removed the very infrequently appearing words that will drag down computation time without contributing to theme formation. I set the lower frequency limit to 10 appearances in TMS. This brings the word count down to 34,941 words (1,090 distinct). You can see from the first few records how the first line of text, "How selfish soever man may be supposed, there are evidently some principles in his nature", tokenizes to just six words.
-
 ```{r}
-tms_tokens <- tms_chapters %>%
-  unnest_tokens(output = "word", input = Text, token = "words") %>%
+tms_tokens_1 <- tms_chapters %>%
+  unnest_tokens(output = "word", input = Text, token = "words") 
+tms_tokens_2 <- tms_tokens_1 %>%
   anti_join(stop_words, by = "word") %>%
-  filter(!str_detect(word, "[0-9]+")) %>%
+  filter(!str_detect(word, "[0-9]+")) 
+tms_tokens <- tms_tokens_2 %>%
   add_count(word) %>%
   filter(n >= 10) %>%
   select(-n)
+```
 
+I prepared the text for analysis by converting the data into a "bag-of-words" representation,  tokenizing the chapters into individual words. Each word of TMS becomes a separate row of data described by its location in the book (part, section, chapter). There are `r nrow(tms_tokens_1) %>% scales::number(big.mark = ",")` words in TMS (`r n_distinct(tms_tokens_1$word) %>% scales::number(big.mark = ",")` distinct). From this arrangement I removed "stop words" such as *a*, *and*, and *across* that occur frequently but are irrelevant to topics. The footnote number identifiers also appear as tokens, so I removed them too. That reduces the word count to `r nrow(tms_tokens_2) %>% scales::number(big.mark = ",")` words (`r n_distinct(tms_tokens_2$word) %>% scales::number(big.mark = ",")` distinct). Some analyses also [lemmatize](https://en.wikipedia.org/wiki/Lemmatisation) the tokens, but [that is not always helpful](http://www.cs.cornell.edu/~xanda/winlp2017.pdf) so I left the words intact. Finally, I removed the very infrequently appearing words that would only drag down computation time without contributing to topic formation. I set the lower frequency limit to 10 appearances in TMS. That brought the word count down to `r nrow(tms_tokens) %>% scales::number(big.mark = ",")` words (`r n_distinct(tms_tokens$word) %>% scales::number(big.mark = ",")` distinct). You can see from the first few records how the first line of text, "How selfish soever man may be supposed, there are evidently some principles in his nature", reduced to just six words.
+
+```{r}
 tms_tokens %>% 
   select(`Part ` = Part, everything(), -id, -Paragraphs) %>%
   head(6) %>%
@@ -163,20 +169,23 @@ tms_tfidf %>%
             color = "#666666", check_overlap = TRUE, show.legend = FALSE) +
   scale_colour_gradient(low = "#cccccc", high = "#116530") +
   theme_minimal() +
+  theme(strip.background = element_rect(fill = "#EEEEEE", color = "#CCCCCC")) +
   labs(title = "Average TF-IDF by Part of TMS",
        subtitle = "Larger := more 'important'.") +
   facet_wrap(~Part, ncol = 2)
 ```
 
-The word "custom" appears 47 times in Part Fifth of TMS - 23 times in Chapter I and 24 times in Chapter 2 - but only twice more in the rest of TMS (once in Part Second and once in Part Seventh). That gives "custom" a particularly high IDF for both chapters of Part Fifth. Within the Part Fifth chapters, "custom" appeared frequently - 4% of the words in chapter I and 2% of the words in chapter II. That gives "custom" a high TF in those chapters as well. Their products, TF-IDF, were therefore large, and their chapter-average in Part Fifth, makes "custom" an important word to Part Fifth.
-
-Next I pivoted the data into a *sparse matrix* with one row per chapter (55 rows), one column per word (1,090 cols), with cell values equal to the word's frequency count. 
+The word "custom" appears 47 times in Part Fifth of TMS - 23 times in Chapter I and 24 times in Chapter 2 - but only twice more in the rest of TMS (once in Part Second and once in Part Seventh). That gives "custom" a particularly high IDF for both chapters of Part Fifth. Within the Part Fifth chapters, "custom" appeared frequently - 4% of the bag-of-words in chapter I and 2% of the bag-of-words in chapter II. That gives "custom" a high TF in those chapters as well. Their products, TF-IDF, were therefore large, and their chapter-average in Part Fifth, makes "custom" an important word to Part Fifth.
 
 ```{r results='hide'}
 tms_cnt <- tms_tokens %>% count(id, word)
 
 tms_sparse <- tms_cnt %>% cast_sparse(id, word, n)
+```
 
+Next I pivoted the data into a *sparse matrix* with one row per chapter (`r nrow(tms_sparse)`) rows), one column per word (`r ncol(tms_sparse) %>% scales::number(big.mark = ",")` cols), with cell values equal to the word's frequency count. 
+
+```{r fig.width=8, fig.height=4}
 tms_cnt %>%
   ggplot(aes(x = word, y = id, fill = n)) +
   geom_tile(show.legend = FALSE, alpha = 0.6) +
@@ -187,31 +196,14 @@ tms_cnt %>%
        subtitle = "Heat map of word frequencies.")
 ```
 
-The matrix is `r scales::percent(sum(tms_sparse %>% as.matrix() == 0) / (55*1090), accuracy = 1)` zeros. Now the data is ready for modeling.
+
+The matrix is `r scales::percent(sum(tms_sparse %>% as.matrix() == 0) / (55*1090), accuracy = 1)` sparse (zeros). Now the data is ready for modeling.
 
 ### Estimation
 
-There is no "right" number of topics in a corpus, but there are diagnostic measures that can aid human
-judgment in the creation of well-performing model. By fitting models of varying numbers of topics, the diagnostic measures can be compared. 
+There is no "right" number of topics in a corpus, but there are diagnostic measures that can aid the modeler's judgment in the creation of well-performing model. By fitting models of varying numbers of topics, the diagnostic measures can be compared. 
 
-One diagnostic measure is the held-out likelihood. In this measure, the model is re-fit with random words removed from documents. Then the model estimates the probabilities that those words are in the documents. A better model will have higher probabilities on the held-out words. The highest held-out likelihood occurred at *K* = 20 topics. I don't understand how the likelihood is measured. [This article](https://mimno.infosci.cornell.edu/info6150/readings/wallach09evaluation.pdf), as well as Section 8.1 of the [STM vignette](https://cran.r-project.org/web/packages/stm/vignettes/stmVignette.pdf) may help.
-
-A second diagnostic measure is the residuals. If residuals have a high variance, more topics may be needed.
-
-The lower bound is the approximation to the lower bound on the marginal likelihood. You can think of it as the model's internal measure of fit. Convergence is monitored by the change in the approximate
-variational lower bound. Once the bound has a small enough change between iterations, the
-model is considered converged.
-
-We then examined the set of estimated models that fit the data particularly well and compared
-them using their scores on average semantic coherence and exclusivity. (Coherence measures the internal consistency of the topics
-and exclusivity captures the extent to which topics in the model can be differentiated from each other.) Our initial goal was to
-identify the set of models that were not strictly dominated by other models in terms of semantic coherence and exclusivity. Then,
-using our own judgment, we examined the cohesiveness and exclusivity of the topics in the set of non-dominated models, that is,
-those models located on the 'semantic coherence-exclusivity frontier' (Roberts et al., 2014). This process resulted in choosing 16 for
-the number of topics. We verified that all of our substantive findings were robust to small variations in the number of estimated
-topics.
-
-```{r}
+```{r fig.width=8, fig.height=4}
 #  tms_proc <- textProcessor(
 #   documents = tms_df$Text, 
 #   metadata = tms_df %>% select(-id, -Text),
@@ -231,17 +223,13 @@ topics.
 #   data = tms_prep$meta,
 #   init.type = "Spectral"
 # )
-```
 
-```{r}
 plan(multiprocess)
 
-stm_mdls <- data.frame(K = c(4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24)) %>%
+stm_mdls <- data.frame(K = c(4, 8, 12, 16, 20, 24, 28, 30, 34, 36, 40)) %>%
   mutate(mdl = future_map(K, ~stm(tms_sparse, K = ., verbose = FALSE),
                           .options = furrr_options(seed = 123)))
-```
 
-```{r}
 heldout <- make.heldout(tms_sparse)
 
 k_result <- stm_mdls %>%
@@ -261,23 +249,48 @@ k_result %>%
             `Semantic coherence` = map_dbl(semantic_coherence, mean),
             `Held-out likelihood` = map_dbl(eval_heldout, "expected.heldout")) %>%
   gather(Metric, Value, -K) %>%
-  ggplot(aes(K, Value, color = Metric)) +
+  ggplot(aes(x = K, y = Value, color = Metric)) +
   geom_line(size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  theme_minimal() +
+  theme(strip.background = element_rect(fill = "#EEEEEE", color = "#CCCCCC")) +
   facet_wrap(~Metric, scales = "free_y") +
   labs(x = "K (number of topics)",
        y = NULL,
-       title = "Model diagnostics by number of topics",
-       subtitle = "These diagnostics indicate that a good number of topics would be around 18")
+       title = "Model Diagnostics for Range of Topic Sizes",
+       subtitle = "Good number of topics may be 28.")
 ```
 
-```{r}
+One diagnostic measure is the held-out likelihood. In this measure, the model is re-fit with random words removed from documents. Then the model estimates the probabilities that those words are in the documents. A better model will have higher probabilities on the held-out words. The highest held-out likelihood occurred at *K* = 20 topics. I don't understand how the likelihood is measured. [This article](https://mimno.infosci.cornell.edu/info6150/readings/wallach09evaluation.pdf), as well as Section 8.1 of the [STM vignette](https://cran.r-project.org/web/packages/stm/vignettes/stmVignette.pdf) may help.
+
+A second diagnostic measure is the residuals. If residuals have a high variance, more topics may be needed.
+
+The lower bound is the approximation to the lower bound on the marginal likelihood. You can think of it as the model's internal measure of fit. Convergence is monitored by the change in the approximate
+variational lower bound. Once the bound has a small enough change between iterations, the
+model is considered converged.
+
+Semantic coherence measures the internal consistency of the topics
+
+Semantic coherence is maximized when the most probable words in a given topic frequently co-occur together, and it’s a metric that correlates well with human judgment of topic quality. Having high semantic coherence is relatively easy, though, if you only have a few topics dominated by very common words, so you want to look at both semantic coherence and exclusivity of words to topics. 
+
+
+and exclusivity captures the extent to which topics in the model can be differentiated from each other.) Our initial goal was to
+identify the set of models that were not strictly dominated by other models in terms of semantic coherence and exclusivity. Then,
+using our own judgment, we examined the cohesiveness and exclusivity of the topics in the set of non-dominated models, that is,
+those models located on the 'semantic coherence-exclusivity frontier' (Roberts et al., 2014). This process resulted in choosing 16 for
+the number of topics. We verified that all of our substantive findings were robust to small variations in the number of estimated
+topics.
+
+
+```{r fig.height=6}
 k_result %>%
   select(K, exclusivity, semantic_coherence) %>%
-  filter(K %in% c(5, 10, 15)) %>%
+  filter(K %in% c(28, 30)) %>%
   unnest(-K) %>%
   mutate(K = as.factor(K)) %>%
   ggplot(aes(semantic_coherence, exclusivity, color = K)) +
   geom_point(size = 2, alpha = 0.7) +
+  scale_color_few() +
+  theme_minimal() +
   labs(x = "Semantic coherence",
        y = "Exclusivity",
        title = "Comparing exclusivity and semantic coherence",
