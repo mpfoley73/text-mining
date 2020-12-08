@@ -1,0 +1,286 @@
+# Sentiment Analysis {#sentimentanalysis}
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(qdap)
+library(tidytext)
+library(magrittr)
+library(tm)
+library(ggthemes)
+```
+
+Sentiment analysis is the extraction of the emotional intent of text.
+
+As much as possible, I will build examples using the text from <u>The Adventures of Tom Sawyer</u>, available on https://gutenberg.org and accessible using the **gutenbergr** package.
+
+```{r warning=FALSE, message=FALSE}
+library(gutenbergr)
+sawyer_raw <- gutenberg_works(title == "The Adventures of Tom Sawyer") %>%
+  gutenberg_download()
+
+skimr::skim(sawyer_raw)
+```
+
+`sawyer_raw` is a tibble with 8,832 rows, with one row per line of text and 0-78 characters per line. This is a corpus with a single document and no metadata (although you could get multiple books at once, and attach the title and author as metadata).
+
+Most text requires some cleaning. I will want to remove the title lines, and add add some metadata, including the chapter number and line number.
+```{r}
+sawyer <- sawyer_raw %>%
+  tail(-455) %>%  # chapter 1 starts on line 456
+  mutate(
+    is_chap = str_detect(text, regex("^chapter [\\divxlc]", ignore_case = TRUE)),
+    chapter = cumsum(is_chap)
+  ) %>%
+  filter(text != "" & !str_detect(text, regex("^chapter [\\divxlc]", ignore_case = TRUE))) %>%
+  mutate(line = row_number()) %>%
+  select(line, chapter, text)
+head(sawyer)
+```
+
+## Data Formats
+
+There are three very common text mining packages, each with their own data format. Whichever package you work in, there is a decent chance you will want to use a function from one of the others, so you need some fluency in them all.
+
+* **tm** works with Corpus objects (raw text with document and corpus metadata). Many **tm** algorithms work with a document-term matrix (DTM), a sparse matrix with one row per document, one column per term, and values equaling the word count or tf-idf. 
+
+* **quanteda** works with Corpus objects (same as **tm**, but its own implementation). Many **quanteda** algorithms work with a document-feature matrix (DFM) (same as **tm**'s DTM, but its own version).
+
+* **tidytext** works with tibbles. Many **tidytext** algorithms work with tidy data frames, a tibble with one row per token (usually a word, but possibly a large item of text), a frequency count column, and possibly other metadata columns.
+
+Let's take the `sawyer_raw` data frame and pre-process it for all three packages.
+
+#### tm {-}
+
+Turn the character vector `sawyer_raw$text` into a text source with `VectorSource()`, then turn the text source into a corpus with `vCorpus()`. Clean the corpus with a series of utility functions. One particularly important function, `removeWords()`, removes stop words, plus any custom stop words. I would normally add "tom" because it is so ubiquitous throughout the text. However, in this case I won't because `stopwords` includes valence shifting words like "very" which are used in polarity scoring. I can remove them later for other exercises.
+
+```{r}
+(sawyer_tm <- VCorpus(VectorSource(sawyer$text)) %>%
+  tm_map(content_transformer(replace_abbreviation)) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(content_transformer(tolower)) %>%
+  tm_map(removeWords, c(stopwords("en"), "tom")) %>%
+  tm_map(stripWhitespace))
+```
+
+Each document in the `sawyer_tm` VCorpus is a line of text. Use `DocumentTermMaterix()` to convert the vCorpus into **tm**'s bag-of-words format, DTM.
+
+```{r}
+(sawyer_tm_dtm <- DocumentTermMatrix(sawyer_tm))
+```
+
+This is a very sparse (nearly 100% sparse) matrix documents as rows and distinct words as columns.
+
+```{r}
+#   group_by(chapter) %>%
+#   mutate(text = paste(text, collapse = " ")) %>%
+#   slice_head(n = 1) %>%
+#   select(chapter, text)
+# 
+# sawyer_sent <- sawyer %>%
+#   sentSplit("text")
+# 
+# skimr::skim(sawyer)
+```
+
+#### quanteda {-}
+dafdafd
+
+#### tidytext {-}
+dafdafd
+
+## Subjectivity Lexicons
+
+A subjectivity lexicon is a predefined list of words associated with emotional context such as positive/negative. `qdap::polarity()` uses the `lexicon::hash_sentiment_huliu` lexicon with sentiment values in (+1, 0, -1.05, -1, -2). It is similar to `tidytext::sentiments()` AFINN lexicon (-5 to 5). `tidytext::sentiments()` also includes the NRC lexicon (classifying among 8 emotions) and the Bing lexicon (classifying as positive or negative).
+
+Subjectivity lexicons are typically short (a few thousand words), but work because of Zipf's law. According to this law, the nth-ranked item in a frequency table has a frequency count equal to 1/n of the top-ranked item. So infrequently used words are used *very* infrequently.
+
+## Polarity Scoring
+
+### qdap
+
+`qdap::polarity(text.var, grouping.var = NULL)` calculates the polarity score for each character string `text.var`, grouping by optional character vector `grouping.var`. `polarity` uses the sentiment dictionary to tag polarized words. It considers a context cluster of words around polarized words as valence shifters (neutral, negator, amplifier, or de-amplifier). Neutral words hold no value but do affect word count. `polarity` applies the dictionary weights to each polarized word and then further weights by the number and position of the valence shifters. Last, it sums the context cluster and divides by the square root of the word count, yielding an unbounded polarity score.
+
+Let's look at the 35 chapters of Tom Sawyer.
+
+```{r}
+sawyer_tm_polarity <- sawyer %>%
+  mutate(text = str_remove_all(text, "\\_")) %$%
+  polarity(text, chapter)
+
+scores(sawyer_tm_polarity)
+```
+
+The `counts()` function returns one row for each line of text. It includes a list of the positive and negative words that contribute to the polarity score. Line 57 has a polarity score of zero because it has a pair of positive and negative words.
+
+```{r}
+sawyer[57,]
+counts(sawyer_tm_polarity)[57,]
+counts(sawyer_tm_polarity)[57, c("pos.words", "neg.words")] %>% unlist()
+```
+
+Oh, but wait - Twain doesn't use *mighty* as a positive adjective, but rather, as an amplifier adverb. *Mighty* appears `r sawyer %>% filter(str_detect(text, "mighty")) %>% nrow` times in Tom Sawyer. We should remove it from the `polarity.frame` and add it to the `amplifiers`.
+
+```{r}
+custom_frame <- sentiment_frame(
+  positives = qdapDictionaries::positive.words[qdapDictionaries::positive.words != "mighty"],
+  negatives = qdapDictionaries::negative.words
+)
+
+sawyer_tm_polarity_2 <- sawyer %>%
+  mutate(text = str_remove_all(text, "\\_")) %$%
+  polarity(
+    text, chapter, 
+    polarity.frame = custom_frame,
+    amplifiers = sort(c(qdapDictionaries::amplification.words, "mighty"))
+  )
+
+counts(sawyer_tm_polarity_2)[57,] 
+```
+
+Something is still wrong here. It removed *mighty* as a positive word, but did not apply it as amplifier. It seems to be confused by the presence of the comma in "tomorrow, to punish". I'll drop the matter for now, but perhaps how we parse the data into rows makes a difference. It also advises that you run `SentSplit()` on the data first, but the function never stopped running, so I abandoned it.
+
+Here is a plot of the polarity results.
+
+```{r fig.height=8, fig.width=6, warning=FALSE}
+plot(sawyer_tm_polarity_2)
+```
+
+Chapter 22 had the lowest polarity score and chapter 34 the highest.
+
+```{r}
+sawyer_tm_polarity_2 %>% 
+  scores() %>%
+  mutate(chapter = as.integer(chapter)) %>%
+  ggplot(aes(x = chapter, y = ave.polarity)) +
+  geom_point() +
+  geom_segment(aes(x = chapter, xend = chapter, y = 0, yend = ave.polarity)) +
+  geom_smooth() +
+  geom_hline(yintercept = 0, color = "red") +
+  theme_minimal() +
+  labs(title = "Adventures of Tom Sawyer Chronological Polarity")
+```
+
+### tidytext
+
+The tidy way to score polarity is tagging individual words as "positive" and "negative" using the `bing` lexicon, then defining polarity as difference in counts.
+
+```{r}
+sawyer_tidy <- sawyer %>%
+  unnest_tokens(output = "word", input = text)
+
+sawyer_tidy_polarity <- sawyer_tidy %>%
+  inner_join(get_sentiments("bing"), by = "word") %>%
+  count(chapter, sentiment) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>%
+  mutate(polarity = positive - negative)
+
+sawyer_tidy_polarity %>% 
+  ggplot(aes(x = chapter, y = polarity)) +
+  geom_point() +
+  geom_segment(aes(x = chapter, xend = chapter, y = 0, yend = polarity)) +
+  geom_smooth() +
+  geom_hline(yintercept = 0, color = "red") +
+  theme_minimal() +
+  labs(title = "Adventures of Tom Sawyer Chronological Polarity")
+```
+
+In this analysis, the most positive chapter is 4 and the most negative is 9.
+
+## Word Counts
+
+If you are using a bag of words approach (ignoring valence-shifters), you can simply count words in the two ranges, positive and negative.
+
+```{r}
+sawyer_tidy %>%
+  inner_join(get_sentiments("bing"), by = "word") %>%
+  count(word, sentiment) %>% 
+  group_by(sentiment) %>%
+  slice_max(order_by = n, n = 8) %>%
+  mutate(n = if_else(sentiment == "negative", -n, n)) %>%
+  ggplot(aes(x = fct_reorder(word, n), y = n, fill = sentiment, color = sentiment)) +
+  geom_col(alpha = 0.6) +
+  scale_fill_few() +
+  scale_color_few() +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  labs(title = "Tom Sawyer Top Sentiment Words", x = "Word Count", y = NULL, 
+       fill = NULL, color = NULL)
+```
+
+## Comparison Cloud
+
+Word clouds are a nice way to get an overview of the data.
+
+```{r}
+sawyer_tm_polarity_2$all %>%
+  mutate(polarity = case_when(polarity < 0 ~ "Negative", 
+                              polarity > 0 ~ "Positive", 
+                              TRUE ~ "Neutral")) %>%
+  unnest_tokens(output = "word", input = text.var) %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!str_detect(word, "[0-9]") & polarity != "Neutral") %>%
+  count(word, polarity, wt = wc) %>%
+  pivot_wider(names_from = polarity, values_from = n, values_fill = 0) %>%
+  data.table::data.table() %>%
+  as.matrix(rownames = "word") %>%
+  wordcloud::comparison.cloud(max.words = 50)
+```
+
+```{r}
+sawyer_tidy %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!str_detect(word, "[0-9]")) %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  filter(!sentiment %in% c("positive", "negative")) %>%
+  count(sentiment, word) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>%
+  data.frame(row.names = "word") %>%
+  wordcloud::comparison.cloud(max.words = 50, title.size = 1.5)
+```
+
+```{r}
+sawyer_tidy %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!str_detect(word, "[0-9]")) %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  filter(sentiment %in% c("positive", "negative")) %>%
+  count(chapter, sentiment) %>%
+  group_by(chapter) %>%
+  mutate(pct = n / sum(n)) %>%
+  ggplot(aes(x = chapter, y = pct, fill = sentiment, color = sentiment)) + 
+  geom_area(alpha = 0.6) +
+  scale_x_continuous(breaks = 1:35, minor_breaks = NULL) +
+  scale_fill_few() +
+  scale_color_few() +
+  geom_hline(yintercept = 0.5, linetype = 2) +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  labs(title = "Sentiment Proportion by Chapter", x = NULL, y = NULL, fill = NULL, color = NULL)
+```
+
+```{r}
+sawyer_tidy %>%
+  anti_join(stop_words, by = "word") %>%
+  filter(!str_detect(word, "[0-9]")) %>%
+  inner_join(get_sentiments("afinn"), by = "word") %>%
+  ggplot(aes(x = value)) +
+  geom_density(fill = ggthemes::few_pal()(1), alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "AFINN Score Density")
+```
+
+```{r}
+sawyer_tidy %>%
+  inner_join(get_sentiments("bing"), by = "word") %>%
+  count(chapter, line, sentiment) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>%
+  mutate(polarity = positive - negative) %>%
+  ggplot(aes(x = as.factor(chapter), y = polarity)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = as.factor(chapter)), alpha = 0.6, size = .5, show.legend = FALSE) +
+  theme_minimal() +
+  labs(title = "Chapter Polarity")
+```
+

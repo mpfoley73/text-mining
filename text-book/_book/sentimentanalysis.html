@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+<head>
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Chapter 2 Sentiment Analysis | Text Mining using R</title>
+  <meta name="description" content="Background and tutorial on text mining (topic modeling, sentiment analysis) using R." />
+  <meta name="generator" content="bookdown 0.21 and GitBook 2.6.7" />
+
+  <meta property="og:title" content="Chapter 2 Sentiment Analysis | Text Mining using R" />
+  <meta property="og:type" content="book" />
+  
+  
+  <meta property="og:description" content="Background and tutorial on text mining (topic modeling, sentiment analysis) using R." />
+  
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Chapter 2 Sentiment Analysis | Text Mining using R" />
+  
+  <meta name="twitter:description" content="Background and tutorial on text mining (topic modeling, sentiment analysis) using R." />
+  
+
+<meta name="author" content="Michael Foley" />
+
+
+<meta name="date" content="2020-12-06" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  
+  
+<link rel="prev" href="topicmodeling.html"/>
+<link rel="next" href="applications.html"/>
+<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
+
+
+
+
+
+
+
+
+<script src="libs/accessible-code-block-0.0.1/empty-anchor.js"></script>
+<link href="libs/anchor-sections-1.0/anchor-sections.css" rel="stylesheet" />
+<script src="libs/anchor-sections-1.0/anchor-sections.js"></script>
+
+
+<style type="text/css">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+<link rel="stylesheet" href="style.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="./">A Minimal Book Example</a></li>
+
+<li class="divider"></li>
+<li class="chapter" data-level="" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i>Intro</a></li>
+<li class="chapter" data-level="1" data-path="topicmodeling.html"><a href="topicmodeling.html"><i class="fa fa-check"></i><b>1</b> Topic Modeling</a><ul>
+<li class="chapter" data-level="1.1" data-path="topicmodeling.html"><a href="topicmodeling.html#lda"><i class="fa fa-check"></i><b>1.1</b> LDA</a></li>
+<li class="chapter" data-level="1.2" data-path="topicmodeling.html"><a href="topicmodeling.html#ctm"><i class="fa fa-check"></i><b>1.2</b> CTM</a></li>
+<li class="chapter" data-level="1.3" data-path="topicmodeling.html"><a href="topicmodeling.html#stm"><i class="fa fa-check"></i><b>1.3</b> STM</a></li>
+</ul></li>
+<li class="chapter" data-level="2" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html"><i class="fa fa-check"></i><b>2</b> Sentiment Analysis</a><ul>
+<li class="chapter" data-level="2.1" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#data-formats"><i class="fa fa-check"></i><b>2.1</b> Data Formats</a></li>
+<li class="chapter" data-level="2.2" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#subjectivity-lexicons"><i class="fa fa-check"></i><b>2.2</b> Subjectivity Lexicons</a></li>
+<li class="chapter" data-level="2.3" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#polarity-scoring"><i class="fa fa-check"></i><b>2.3</b> Polarity Scoring</a><ul>
+<li class="chapter" data-level="2.3.1" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#qdap"><i class="fa fa-check"></i><b>2.3.1</b> qdap</a></li>
+<li class="chapter" data-level="2.3.2" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#tidytext-1"><i class="fa fa-check"></i><b>2.3.2</b> tidytext</a></li>
+</ul></li>
+</ul></li>
+<li class="chapter" data-level="3" data-path="applications.html"><a href="applications.html"><i class="fa fa-check"></i><b>3</b> Applications</a><ul>
+<li class="chapter" data-level="3.1" data-path="applications.html"><a href="applications.html#example-one"><i class="fa fa-check"></i><b>3.1</b> Example one</a></li>
+<li class="chapter" data-level="3.2" data-path="applications.html"><a href="applications.html#example-two"><i class="fa fa-check"></i><b>3.2</b> Example two</a></li>
+</ul></li>
+<li class="chapter" data-level="4" data-path="final-words.html"><a href="final-words.html"><i class="fa fa-check"></i><b>4</b> Final Words</a></li>
+<li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
+<li class="divider"></li>
+<li><a href="https://github.com/rstudio/bookdown" target="blank">Published with bookdown</a></li>
+
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./">Text Mining using R</a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="sentimentanalysis" class="section level1">
+<h1><span class="header-section-number">Chapter 2</span> Sentiment Analysis</h1>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="sentimentanalysis.html#cb1-1"></a><span class="kw">library</span>(tidyverse)</span>
+<span id="cb1-2"><a href="sentimentanalysis.html#cb1-2"></a><span class="kw">library</span>(qdap)</span>
+<span id="cb1-3"><a href="sentimentanalysis.html#cb1-3"></a><span class="kw">library</span>(tidytext)</span>
+<span id="cb1-4"><a href="sentimentanalysis.html#cb1-4"></a><span class="kw">library</span>(magrittr)</span>
+<span id="cb1-5"><a href="sentimentanalysis.html#cb1-5"></a><span class="kw">library</span>(tm)</span></code></pre></div>
+<p>Sentiment analysis is the extraction of the emotional intent of text.</p>
+<p>As much as possible, I will build examples using the text from <u>The Adventures of Tom Sawyer</u>, available on <a href="https://gutenberg.org" class="uri">https://gutenberg.org</a> and accessible using the <strong>gutenbergr</strong> package.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="sentimentanalysis.html#cb2-1"></a><span class="kw">library</span>(gutenbergr)</span>
+<span id="cb2-2"><a href="sentimentanalysis.html#cb2-2"></a>sawyer_raw &lt;-<span class="st"> </span><span class="kw">gutenberg_works</span>(title <span class="op">==</span><span class="st"> &quot;The Adventures of Tom Sawyer&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb2-3"><a href="sentimentanalysis.html#cb2-3"></a><span class="st">  </span><span class="kw">gutenberg_download</span>()</span>
+<span id="cb2-4"><a href="sentimentanalysis.html#cb2-4"></a></span>
+<span id="cb2-5"><a href="sentimentanalysis.html#cb2-5"></a>skimr<span class="op">::</span><span class="kw">skim</span>(sawyer_raw)</span></code></pre></div>
+<table>
+<caption><span id="tab:unnamed-chunk-2">Table 2.1: </span>Data summary</caption>
+<tbody>
+<tr class="odd">
+<td align="left">Name</td>
+<td align="left">sawyer_raw</td>
+</tr>
+<tr class="even">
+<td align="left">Number of rows</td>
+<td align="left">8832</td>
+</tr>
+<tr class="odd">
+<td align="left">Number of columns</td>
+<td align="left">2</td>
+</tr>
+<tr class="even">
+<td align="left">_______________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Column type frequency:</td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">character</td>
+<td align="left">1</td>
+</tr>
+<tr class="odd">
+<td align="left">numeric</td>
+<td align="left">1</td>
+</tr>
+<tr class="even">
+<td align="left">________________________</td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">Group variables</td>
+<td align="left">None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: character</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">min</th>
+<th align="right">max</th>
+<th align="right">empty</th>
+<th align="right">n_unique</th>
+<th align="right">whitespace</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">text</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">0</td>
+<td align="right">78</td>
+<td align="right">2212</td>
+<td align="right">6579</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: numeric</strong></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">skim_variable</th>
+<th align="right">n_missing</th>
+<th align="right">complete_rate</th>
+<th align="right">mean</th>
+<th align="right">sd</th>
+<th align="right">p0</th>
+<th align="right">p25</th>
+<th align="right">p50</th>
+<th align="right">p75</th>
+<th align="right">p100</th>
+<th align="left">hist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">gutenberg_id</td>
+<td align="right">0</td>
+<td align="right">1</td>
+<td align="right">74</td>
+<td align="right">0</td>
+<td align="right">74</td>
+<td align="right">74</td>
+<td align="right">74</td>
+<td align="right">74</td>
+<td align="right">74</td>
+<td align="left">▁▁▇▁▁</td>
+</tr>
+</tbody>
+</table>
+<p><code>sawyer_raw</code> is a tibble with 8,832 rows, with one row per line of text and 0-78 characters per line. This is a corpus with a single document and no metadata (although you could get multiple books at once, and attach the title and author as metadata).</p>
+<p>Most text requires some cleaning. I will want to remove the title lines, and add add some metadata, including the chapter number and line number.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="sentimentanalysis.html#cb3-1"></a>sawyer &lt;-<span class="st"> </span>sawyer_raw <span class="op">%&gt;%</span></span>
+<span id="cb3-2"><a href="sentimentanalysis.html#cb3-2"></a><span class="st">  </span><span class="kw">tail</span>(<span class="op">-</span><span class="dv">455</span>) <span class="op">%&gt;%</span><span class="st">  </span><span class="co"># chapter 1 starts on line 456</span></span>
+<span id="cb3-3"><a href="sentimentanalysis.html#cb3-3"></a><span class="st">  </span><span class="kw">mutate</span>(</span>
+<span id="cb3-4"><a href="sentimentanalysis.html#cb3-4"></a>    <span class="dt">is_chap =</span> <span class="kw">str_detect</span>(text, <span class="kw">regex</span>(<span class="st">&quot;^chapter [</span><span class="ch">\\</span><span class="st">divxlc]&quot;</span>, <span class="dt">ignore_case =</span> <span class="ot">TRUE</span>)),</span>
+<span id="cb3-5"><a href="sentimentanalysis.html#cb3-5"></a>    <span class="dt">chapter =</span> <span class="kw">cumsum</span>(is_chap)</span>
+<span id="cb3-6"><a href="sentimentanalysis.html#cb3-6"></a>  ) <span class="op">%&gt;%</span></span>
+<span id="cb3-7"><a href="sentimentanalysis.html#cb3-7"></a><span class="st">  </span><span class="kw">filter</span>(text <span class="op">!=</span><span class="st"> &quot;&quot;</span> <span class="op">&amp;</span><span class="st"> </span><span class="op">!</span><span class="kw">str_detect</span>(text, <span class="kw">regex</span>(<span class="st">&quot;^chapter [</span><span class="ch">\\</span><span class="st">divxlc]&quot;</span>, <span class="dt">ignore_case =</span> <span class="ot">TRUE</span>))) <span class="op">%&gt;%</span></span>
+<span id="cb3-8"><a href="sentimentanalysis.html#cb3-8"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">line =</span> <span class="kw">row_number</span>()) <span class="op">%&gt;%</span></span>
+<span id="cb3-9"><a href="sentimentanalysis.html#cb3-9"></a><span class="st">  </span><span class="kw">select</span>(line, chapter, text)</span>
+<span id="cb3-10"><a href="sentimentanalysis.html#cb3-10"></a><span class="kw">head</span>(sawyer)</span></code></pre></div>
+<pre><code>## # A tibble: 6 x 3
+##    line chapter text                                            
+##   &lt;int&gt;   &lt;int&gt; &lt;chr&gt;                                           
+## 1     1       1 “TOM!”                                          
+## 2     2       1 No answer.                                      
+## 3     3       1 “TOM!”                                          
+## 4     4       1 No answer.                                      
+## 5     5       1 “What&#39;s gone with that boy,  I wonder? You TOM!”
+## 6     6       1 No answer.</code></pre>
+<div id="data-formats" class="section level2">
+<h2><span class="header-section-number">2.1</span> Data Formats</h2>
+<p>There are three very common text mining packages, each with their own data format. Whichever package you work in, there is a decent chance you will want to use a function from one of the others, so you need some fluency in them all.</p>
+<ul>
+<li><p><strong>tm</strong> works with Corpus objects (raw text with document and corpus metadata). Many <strong>tm</strong> algorithms work with a document-term matrix (DTM), a sparse matrix with one row per document, one column per term, and values equaling the word count or tf-idf.</p></li>
+<li><p><strong>quanteda</strong> works with Corpus objects (same as <strong>tm</strong>, but its own implementation). Many <strong>quanteda</strong> algorithms work with a document-feature matrix (DFM) (same as <strong>tm</strong>’s DTM, but its own version).</p></li>
+<li><p><strong>tidytext</strong> works with tibbles. Many <strong>tidytext</strong> algorithms work with tidy data frames, a tibble with one row per token (usually a word, but possibly a large item of text), a frequency count column, and possibly other metadata columns.</p></li>
+</ul>
+<p>Let’s take the <code>sawyer_raw</code> data frame and pre-process it for all three packages.</p>
+<div id="tm" class="section level4 unnumbered">
+<h4>tm</h4>
+<p>Turn the character vector <code>sawyer_raw$text</code> into a text source with <code>VectorSource()</code>, then turn the text source into a corpus with <code>vCorpus()</code>. Clean the corpus with a series of utility functions. One particularly important function, <code>removeWords()</code>, removes stop words, plus any custom stop words. I would normally add “tom” because it is so ubiquitous throughout the text. However, in this case I won’t because <code>stopwords</code> includes valence shifting words like “very” which are used in polarity scoring. I can remove them later for other exercises.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="sentimentanalysis.html#cb5-1"></a>(sawyer_tm &lt;-<span class="st"> </span><span class="kw">VCorpus</span>(<span class="kw">VectorSource</span>(sawyer<span class="op">$</span>text)) <span class="op">%&gt;%</span></span>
+<span id="cb5-2"><a href="sentimentanalysis.html#cb5-2"></a><span class="st">  </span><span class="kw">tm_map</span>(<span class="kw">content_transformer</span>(replace_abbreviation)) <span class="op">%&gt;%</span></span>
+<span id="cb5-3"><a href="sentimentanalysis.html#cb5-3"></a><span class="st">  </span><span class="kw">tm_map</span>(removePunctuation) <span class="op">%&gt;%</span></span>
+<span id="cb5-4"><a href="sentimentanalysis.html#cb5-4"></a><span class="st">  </span><span class="kw">tm_map</span>(removeNumbers) <span class="op">%&gt;%</span></span>
+<span id="cb5-5"><a href="sentimentanalysis.html#cb5-5"></a><span class="st">  </span><span class="kw">tm_map</span>(<span class="kw">content_transformer</span>(tolower)) <span class="op">%&gt;%</span></span>
+<span id="cb5-6"><a href="sentimentanalysis.html#cb5-6"></a><span class="st">  </span><span class="kw">tm_map</span>(removeWords, <span class="kw">c</span>(<span class="kw">stopwords</span>(<span class="st">&quot;en&quot;</span>), <span class="st">&quot;tom&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb5-7"><a href="sentimentanalysis.html#cb5-7"></a><span class="st">  </span><span class="kw">tm_map</span>(stripWhitespace))</span></code></pre></div>
+<pre><code>## &lt;&lt;VCorpus&gt;&gt;
+## Metadata:  corpus specific: 0, document level (indexed): 0
+## Content:  documents: 6349</code></pre>
+<p>Each document in the <code>sawyer_tm</code> VCorpus is a line of text. Use <code>DocumentTermMaterix()</code> to convert the vCorpus into <strong>tm</strong>’s bag-of-words format, DTM.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="sentimentanalysis.html#cb7-1"></a>(sawyer_tm_dtm &lt;-<span class="st"> </span><span class="kw">DocumentTermMatrix</span>(sawyer_tm))</span></code></pre></div>
+<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 6349, terms: 8654)&gt;&gt;
+## Non-/sparse entries: 33788/54910458
+## Sparsity           : 100%
+## Maximal term length: 24
+## Weighting          : term frequency (tf)</code></pre>
+<p>This is a very sparse (nearly 100% sparse) matrix documents as rows and distinct words as columns.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="sentimentanalysis.html#cb9-1"></a><span class="co">#   group_by(chapter) %&gt;%</span></span>
+<span id="cb9-2"><a href="sentimentanalysis.html#cb9-2"></a><span class="co">#   mutate(text = paste(text, collapse = &quot; &quot;)) %&gt;%</span></span>
+<span id="cb9-3"><a href="sentimentanalysis.html#cb9-3"></a><span class="co">#   slice_head(n = 1) %&gt;%</span></span>
+<span id="cb9-4"><a href="sentimentanalysis.html#cb9-4"></a><span class="co">#   select(chapter, text)</span></span>
+<span id="cb9-5"><a href="sentimentanalysis.html#cb9-5"></a><span class="co"># </span></span>
+<span id="cb9-6"><a href="sentimentanalysis.html#cb9-6"></a><span class="co"># sawyer_sent &lt;- sawyer %&gt;%</span></span>
+<span id="cb9-7"><a href="sentimentanalysis.html#cb9-7"></a><span class="co">#   sentSplit(&quot;text&quot;)</span></span>
+<span id="cb9-8"><a href="sentimentanalysis.html#cb9-8"></a><span class="co"># </span></span>
+<span id="cb9-9"><a href="sentimentanalysis.html#cb9-9"></a><span class="co"># skimr::skim(sawyer)</span></span></code></pre></div>
+</div>
+<div id="quanteda" class="section level4 unnumbered">
+<h4>quanteda</h4>
+<p>dafdafd</p>
+</div>
+<div id="tidytext" class="section level4 unnumbered">
+<h4>tidytext</h4>
+<p>dafdafd</p>
+</div>
+</div>
+<div id="subjectivity-lexicons" class="section level2">
+<h2><span class="header-section-number">2.2</span> Subjectivity Lexicons</h2>
+<p>A subjectivity lexicon is a predefined list of words associated with emotional context such as positive/negative. <code>qdap::polarity()</code> uses the <code>lexicon::hash_sentiment_huliu</code> lexicon with sentiment values in (+1, 0, -1.05, -1, -2). It is similar to <code>tidytext::sentiments()</code> AFINN lexicon (-5 to 5). <code>tidytext::sentiments()</code> also includes the NRC lexicon (classifying among 8 emotions) and the Bing lexicon (classifying as positive or negative).</p>
+<p>Subjectivity lexicons are typically short (a few thousand words), but work because of Zipf’s law. According to this law, the nth-ranked item in a frequency table has a frequency count equal to 1/n of the top-ranked item. So infrequently used words are used <em>very</em> infrequently.</p>
+</div>
+<div id="polarity-scoring" class="section level2">
+<h2><span class="header-section-number">2.3</span> Polarity Scoring</h2>
+<div id="qdap" class="section level3">
+<h3><span class="header-section-number">2.3.1</span> qdap</h3>
+<p><code>qdap::polarity(text.var, grouping.var = NULL)</code> calculates the polarity score for each character string <code>text.var</code>, grouping by optional character vector <code>grouping.var</code>. <code>polarity</code> uses the sentiment dictionary to tag polarized words. It considers a context cluster of words around polarized words as valence shifters (neutral, negator, amplifier, or de-amplifier). Neutral words hold no value but do affect word count. <code>polarity</code> applies the dictionary weights to each polarized word and then further weights by the number and position of the valence shifters. Last, it sums the context cluster and divides by the square root of the word count, yielding an unbounded polarity score.</p>
+<p>Let’s look at the 35 chapters of Tom Sawyer.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="sentimentanalysis.html#cb10-1"></a>sawyer_tm_polarity &lt;-<span class="st"> </span>sawyer <span class="op">%&gt;%</span></span>
+<span id="cb10-2"><a href="sentimentanalysis.html#cb10-2"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">text =</span> <span class="kw">str_remove_all</span>(text, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">_&quot;</span>)) <span class="op">%$%</span></span>
+<span id="cb10-3"><a href="sentimentanalysis.html#cb10-3"></a><span class="st">  </span><span class="kw">polarity</span>(text, chapter)</span></code></pre></div>
+<pre><code>## Warning in polarity(text, chapter): 
+##   Some rows contain double punctuation.  Suggested use of `sentSplit` function.</code></pre>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="sentimentanalysis.html#cb12-1"></a><span class="kw">scores</span>(sawyer_tm_polarity)</span></code></pre></div>
+<pre><code>##    chapter total.sentences total.words ave.polarity sd.polarity stan.mean.polarity
+## 1        1             240        2433       -0.020       0.242             -0.085
+## 2        2             170        1943        0.041       0.237              0.173
+## 3        3             186        2278       -0.013       0.269             -0.047
+## 4        4             302        3487        0.043       0.287              0.150
+## 5        5             155        1947       -0.016       0.280             -0.057
+## 6        6             347        3552        0.012       0.249              0.048
+## 7        7             180        1934       -0.021       0.238             -0.089
+## 8        8             153        1773       -0.048       0.272             -0.176
+## 9        9             201        2167       -0.080       0.279             -0.286
+## 10      10             194        2065       -0.080       0.261             -0.308
+## 11      11             136        1488       -0.040       0.242             -0.163
+## 12      12             147        1702       -0.087       0.294             -0.294
+## 13      13             222        2493       -0.036       0.296             -0.123
+## 14      14             177        2096       -0.025       0.294             -0.084
+## 15      15             140        1697       -0.030       0.265             -0.113
+## 16      16             276        3196       -0.046       0.269             -0.172
+## 17      17              99        1138        0.000       0.225              0.001
+## 18      18             260        2934        0.004       0.250              0.017
+## 19      19              73         791        0.001       0.211              0.007
+## 20      20             145        1700       -0.075       0.296             -0.254
+## 21      21             189        2174        0.039       0.315              0.123
+## 22      22              86        1027       -0.157       0.327             -0.479
+## 23      23             190        1949       -0.058       0.284             -0.203
+## 24      24              35         409       -0.090       0.341             -0.263
+## 25      25             214        2087       -0.009       0.219             -0.041
+## 26      26             250        2631       -0.026       0.274             -0.096
+## 27      27              87         965        0.013       0.252              0.050
+## 28      28              97        1088        0.034       0.226              0.150
+## 29      29             220        2606        0.000       0.263             -0.001
+## 30      30             273        3068       -0.043       0.277             -0.154
+## 31      31             268        3043       -0.056       0.276             -0.203
+## 32      32              87        1030       -0.040       0.278             -0.145
+## 33      33             307        3377       -0.024       0.256             -0.094
+## 34      34              82         879        0.073       0.274              0.266
+## 35      35             161        1919        0.002       0.269              0.006</code></pre>
+<p>The <code>counts()</code> function returns one row for each line of text. It includes a list of the positive and negative words that contribute to the polarity score. Line 57 has a polarity score of zero because it has a pair of positive and negative words.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="sentimentanalysis.html#cb14-1"></a>sawyer[<span class="dv">57</span>,]</span></code></pre></div>
+<pre><code>## # A tibble: 1 x 3
+##    line chapter text                                                            
+##   &lt;int&gt;   &lt;int&gt; &lt;chr&gt;                                                           
+## 1    57       1 tomorrow, to punish him. It&#39;s mighty hard to make him work Satu~</code></pre>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="sentimentanalysis.html#cb16-1"></a><span class="kw">counts</span>(sawyer_tm_polarity)[<span class="dv">57</span>,]</span></code></pre></div>
+<pre><code>##    chapter wc polarity    pos.words    neg.words                                                              text.var
+## 57       1 12        0 mighty, work punish, hard tomorrow, to punish him. It&#39;s mighty hard to make him work Saturdays,</code></pre>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="sentimentanalysis.html#cb18-1"></a><span class="kw">counts</span>(sawyer_tm_polarity)[<span class="dv">57</span>, <span class="kw">c</span>(<span class="st">&quot;pos.words&quot;</span>, <span class="st">&quot;neg.words&quot;</span>)] <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">unlist</span>()</span></code></pre></div>
+<pre><code>## pos.words1 pos.words2 neg.words1 neg.words2 
+##   &quot;mighty&quot;     &quot;work&quot;   &quot;punish&quot;     &quot;hard&quot;</code></pre>
+<p>Oh, but wait - Twain doesn’t use <em>mighty</em> as a positive adjective, but rather, as an amplifier adverb. <em>Mighty</em> appears 26 times in Tom Sawyer. We should remove it from the <code>polarity.frame</code> and add it to the <code>amplifiers</code>.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="sentimentanalysis.html#cb20-1"></a>custom_frame &lt;-<span class="st"> </span><span class="kw">sentiment_frame</span>(</span>
+<span id="cb20-2"><a href="sentimentanalysis.html#cb20-2"></a>  <span class="dt">positives =</span> qdapDictionaries<span class="op">::</span>positive.words[qdapDictionaries<span class="op">::</span>positive.words <span class="op">!=</span><span class="st"> &quot;mighty&quot;</span>],</span>
+<span id="cb20-3"><a href="sentimentanalysis.html#cb20-3"></a>  <span class="dt">negatives =</span> qdapDictionaries<span class="op">::</span>negative.words</span>
+<span id="cb20-4"><a href="sentimentanalysis.html#cb20-4"></a>)</span>
+<span id="cb20-5"><a href="sentimentanalysis.html#cb20-5"></a></span>
+<span id="cb20-6"><a href="sentimentanalysis.html#cb20-6"></a>sawyer_tm_polarity_<span class="dv">2</span> &lt;-<span class="st"> </span>sawyer <span class="op">%&gt;%</span></span>
+<span id="cb20-7"><a href="sentimentanalysis.html#cb20-7"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">text =</span> <span class="kw">str_remove_all</span>(text, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">_&quot;</span>)) <span class="op">%$%</span></span>
+<span id="cb20-8"><a href="sentimentanalysis.html#cb20-8"></a><span class="st">  </span><span class="kw">polarity</span>(</span>
+<span id="cb20-9"><a href="sentimentanalysis.html#cb20-9"></a>    text, chapter, </span>
+<span id="cb20-10"><a href="sentimentanalysis.html#cb20-10"></a>    <span class="dt">polarity.frame =</span> custom_frame,</span>
+<span id="cb20-11"><a href="sentimentanalysis.html#cb20-11"></a>    <span class="dt">amplifiers =</span> <span class="kw">sort</span>(<span class="kw">c</span>(qdapDictionaries<span class="op">::</span>amplification.words, <span class="st">&quot;mighty&quot;</span>))</span>
+<span id="cb20-12"><a href="sentimentanalysis.html#cb20-12"></a>  )</span></code></pre></div>
+<pre><code>## Warning in polarity(text, chapter, polarity.frame = custom_frame, amplifiers = sort(c(qdapDictionaries::amplification.words, : 
+##   Some rows contain double punctuation.  Suggested use of `sentSplit` function.</code></pre>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="sentimentanalysis.html#cb22-1"></a><span class="kw">counts</span>(sawyer_tm_polarity_<span class="dv">2</span>)[<span class="dv">57</span>,] </span></code></pre></div>
+<pre><code>##    chapter wc polarity pos.words    neg.words                                                              text.var
+## 57       1 12   -0.289      work punish, hard tomorrow, to punish him. It&#39;s mighty hard to make him work Saturdays,</code></pre>
+<p>Something is still wrong here. It removed <em>mighty</em> as a positive word, but did not apply it as amplifier. It seems to be confused by the presence of the comma in “tomorrow, to punish”. I’ll drop the matter for now, but perhaps how we parse the data into rows makes a difference. It also advises that you run <code>SentSplit()</code> on the data first, but the function never stopped running, so I abandoned it.</p>
+<p>Here is a plot of the polarity results.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="sentimentanalysis.html#cb24-1"></a><span class="kw">plot</span>(sawyer_tm_polarity_<span class="dv">2</span>)</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-10-1.png" width="576" /></p>
+<p>Chapter 22 had the lowest polarity score and chapter 34 the highest.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="sentimentanalysis.html#cb25-1"></a>sawyer_tm_polarity_<span class="dv">2</span> <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb25-2"><a href="sentimentanalysis.html#cb25-2"></a><span class="st">  </span><span class="kw">scores</span>() <span class="op">%&gt;%</span></span>
+<span id="cb25-3"><a href="sentimentanalysis.html#cb25-3"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">chapter =</span> <span class="kw">as.integer</span>(chapter)) <span class="op">%&gt;%</span></span>
+<span id="cb25-4"><a href="sentimentanalysis.html#cb25-4"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">y =</span> ave.polarity)) <span class="op">+</span></span>
+<span id="cb25-5"><a href="sentimentanalysis.html#cb25-5"></a><span class="st">  </span><span class="kw">geom_point</span>() <span class="op">+</span></span>
+<span id="cb25-6"><a href="sentimentanalysis.html#cb25-6"></a><span class="st">  </span><span class="kw">geom_segment</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">xend =</span> chapter, <span class="dt">y =</span> <span class="dv">0</span>, <span class="dt">yend =</span> ave.polarity)) <span class="op">+</span></span>
+<span id="cb25-7"><a href="sentimentanalysis.html#cb25-7"></a><span class="st">  </span><span class="kw">geom_smooth</span>() <span class="op">+</span></span>
+<span id="cb25-8"><a href="sentimentanalysis.html#cb25-8"></a><span class="st">  </span><span class="kw">geom_hline</span>(<span class="dt">yintercept =</span> <span class="dv">0</span>, <span class="dt">color =</span> <span class="st">&quot;red&quot;</span>) <span class="op">+</span></span>
+<span id="cb25-9"><a href="sentimentanalysis.html#cb25-9"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb25-10"><a href="sentimentanalysis.html#cb25-10"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Adventures of Tom Sawyer Chronological Polarity&quot;</span>)</span></code></pre></div>
+<pre><code>## `geom_smooth()` using method = &#39;loess&#39; and formula &#39;y ~ x&#39;</code></pre>
+<p><img src="text-book_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+</div>
+<div id="tidytext-1" class="section level3">
+<h3><span class="header-section-number">2.3.2</span> tidytext</h3>
+<p>The tidy way to score polarity is tagging individual words as “positive” and “negative” using the <code>bing</code> lexicon, then defining polarity as difference in counts.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="sentimentanalysis.html#cb27-1"></a>sawyer_tidy &lt;-<span class="st"> </span>sawyer <span class="op">%&gt;%</span></span>
+<span id="cb27-2"><a href="sentimentanalysis.html#cb27-2"></a><span class="st">  </span><span class="kw">unnest_tokens</span>(<span class="dt">output =</span> <span class="st">&quot;word&quot;</span>, <span class="dt">input =</span> text)</span>
+<span id="cb27-3"><a href="sentimentanalysis.html#cb27-3"></a></span>
+<span id="cb27-4"><a href="sentimentanalysis.html#cb27-4"></a>sawyer_tidy_polarity &lt;-<span class="st"> </span>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb27-5"><a href="sentimentanalysis.html#cb27-5"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;bing&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb27-6"><a href="sentimentanalysis.html#cb27-6"></a><span class="st">  </span><span class="kw">count</span>(chapter, sentiment) <span class="op">%&gt;%</span></span>
+<span id="cb27-7"><a href="sentimentanalysis.html#cb27-7"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> sentiment, <span class="dt">values_from =</span> n, <span class="dt">values_fill =</span> <span class="dv">0</span>) <span class="op">%&gt;%</span></span>
+<span id="cb27-8"><a href="sentimentanalysis.html#cb27-8"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">polarity =</span> positive <span class="op">-</span><span class="st"> </span>negative)</span>
+<span id="cb27-9"><a href="sentimentanalysis.html#cb27-9"></a></span>
+<span id="cb27-10"><a href="sentimentanalysis.html#cb27-10"></a>sawyer_tidy_polarity <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb27-11"><a href="sentimentanalysis.html#cb27-11"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">y =</span> polarity)) <span class="op">+</span></span>
+<span id="cb27-12"><a href="sentimentanalysis.html#cb27-12"></a><span class="st">  </span><span class="kw">geom_point</span>() <span class="op">+</span></span>
+<span id="cb27-13"><a href="sentimentanalysis.html#cb27-13"></a><span class="st">  </span><span class="kw">geom_segment</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">xend =</span> chapter, <span class="dt">y =</span> <span class="dv">0</span>, <span class="dt">yend =</span> polarity)) <span class="op">+</span></span>
+<span id="cb27-14"><a href="sentimentanalysis.html#cb27-14"></a><span class="st">  </span><span class="kw">geom_smooth</span>() <span class="op">+</span></span>
+<span id="cb27-15"><a href="sentimentanalysis.html#cb27-15"></a><span class="st">  </span><span class="kw">geom_hline</span>(<span class="dt">yintercept =</span> <span class="dv">0</span>, <span class="dt">color =</span> <span class="st">&quot;red&quot;</span>) <span class="op">+</span></span>
+<span id="cb27-16"><a href="sentimentanalysis.html#cb27-16"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb27-17"><a href="sentimentanalysis.html#cb27-17"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Adventures of Tom Sawyer Chronological Polarity&quot;</span>)</span></code></pre></div>
+<pre><code>## `geom_smooth()` using method = &#39;loess&#39; and formula &#39;y ~ x&#39;</code></pre>
+<p><img src="text-book_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>In this analysis, the most positive chapter is 4 and the most negative is 9.</p>
+
+</div>
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="topicmodeling.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="applications.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
+<script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-clipboard.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": false,
+"facebook": true,
+"twitter": true,
+"linkedin": false,
+"weibo": false,
+"instapaper": false,
+"vk": false,
+"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": null,
+"text": null
+},
+"history": {
+"link": null,
+"text": null
+},
+"view": {
+"link": null,
+"text": null
+},
+"download": ["text-book.pdf", "text-book.epub"],
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+</body>
+
+</html>
