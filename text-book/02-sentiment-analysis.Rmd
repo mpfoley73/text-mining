@@ -284,3 +284,39 @@ sawyer_tidy %>%
   labs(title = "Chapter Polarity")
 ```
 
+Bar plots are usually a clearer alternative, but radar charts do look pretty.
+
+https://en.wikipedia.org/wiki/Robert_Plutchik#/media/File:Plutchik-wheel.svg
+
+```{r}
+dat <- sawyer_tidy %>%
+  inner_join(get_sentiments("nrc"), by = "word") %>%
+  filter(!sentiment %in% c("positive", "negative")) %>%
+  mutate(sentiment = case_when(sentiment == "joy" ~ 1,
+                               sentiment == "trust" ~ 2,
+                               sentiment == "fear" ~ 3,
+                               sentiment == "surprise" ~ 4,
+                               sentiment == "sadness" ~ 5,
+                               sentiment == "disgust" ~ 6,
+                               sentiment == "anger" ~ 7,
+                               sentiment == "anticipation" ~ 8,
+                               TRUE ~ 9),
+         sentiment = factor(sentiment, levels = c(1:9),
+                            labels = c("joy", "trust", "fear", "surprise",
+                                       "sadness", "disgust", "anger",
+                                       "anticipation", "other"))) %>%
+  count(sentiment) 
+
+dat %>% 
+  radarchart::chartJSRadar()
+
+```
+
+```{r}
+sawyer_tidy %>%
+  inner_join(get_sentiments("afinn"), by = "word") %>%
+  count(chapter, value) %>%
+  ggplot(aes(area = n, fill = value)) +
+  treemapify::geom_treemap()
+```
+
