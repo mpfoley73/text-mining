@@ -14,3 +14,5 @@ final-words
 tab:unnamed-chunk-2
 qdap
 tidytext-1
+word-counts
+comparison-cloud

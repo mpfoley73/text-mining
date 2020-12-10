@@ -11,7 +11,7 @@ library(ggthemes)
 
 Sentiment analysis is the extraction of the emotional intent of text.
 
-As much as possible, I will build examples using the text from <u>The Adventures of Tom Sawyer</u>, available on https://gutenberg.org and accessible using the **gutenbergr** package.
+I will work with the text from <u>The Adventures of Tom Sawyer</u>, available on https://gutenberg.org and accessible using the **gutenbergr** package.
 
 ```{r warning=FALSE, message=FALSE}
 library(gutenbergr)
@@ -161,6 +161,29 @@ sawyer_tm_polarity_2 %>%
   labs(title = "Adventures of Tom Sawyer Chronological Polarity")
 ```
 
+Create to strings, one with the positive chapters, and one from the negative chapters.
+
+```{r}
+sawyer_poloarity_pos <- sawyer_tm_polarity_2$all %>%
+  filter(polarity > 0) %>%
+  pull(text.var) %>%
+  paste(collapse = " ")
+
+sawyer_poloarity_neg <- sawyer_tm_polarity_2$all %>%
+  filter(polarity < 0) %>%
+  pull(text.var) %>%
+  paste(collapse = " ") 
+
+sawyer_polarity_tdm <- c(sawyer_poloarity_pos, sawyer_poloarity_neg) %>%
+  VectorSource() %>%
+  VCorpus() %>%
+  TermDocumentMatrix(control = list(weighting = weightTfIdf, 
+                                    removePunctuation = TRUE,
+                                    stopwords = stopwords(kind = "en")))
+```
+
+Often authors will use more words when they are more passionate. Lengthy reviews may inflate overall sentiment since the reviews will inherently contain more positive or negative language as the review lengthens. 
+
 ### tidytext
 
 The tidy way to score polarity is tagging individual words as "positive" and "negative" using the `bing` lexicon, then defining polarity as difference in counts.
@@ -173,7 +196,9 @@ sawyer_tidy_polarity <- sawyer_tidy %>%
   inner_join(get_sentiments("bing"), by = "word") %>%
   count(chapter, sentiment) %>%
   pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>%
-  mutate(polarity = positive - negative)
+  mutate(polarity = positive - negative,
+         polarity_desc = if_else(polarity >= 0, "Positive", "Negative")) %>%
+  inner_join(sawyer_tidy %>% count(chapter), by = "chapter")
 
 sawyer_tidy_polarity %>% 
   ggplot(aes(x = chapter, y = polarity)) +
@@ -183,6 +208,15 @@ sawyer_tidy_polarity %>%
   geom_hline(yintercept = 0, color = "red") +
   theme_minimal() +
   labs(title = "Adventures of Tom Sawyer Chronological Polarity")
+
+sawyer_tidy_polarity %>%
+  ggplot(aes(x = polarity, y = n, color = polarity_desc)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", formula = "y ~ x", se = FALSE) +
+  scale_color_few() +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  labs(title = "Polarity is usually a function of length", color = NULL)
 ```
 
 In this analysis, the most positive chapter is 4 and the most negative is 9.

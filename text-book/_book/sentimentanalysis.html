@@ -24,7 +24,7 @@
 <meta name="author" content="Michael Foley" />
 
 
-<meta name="date" content="2020-12-06" />
+<meta name="date" content="2020-12-10" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -53,6 +53,9 @@
 <script src="libs/accessible-code-block-0.0.1/empty-anchor.js"></script>
 <link href="libs/anchor-sections-1.0/anchor-sections.css" rel="stylesheet" />
 <script src="libs/anchor-sections-1.0/anchor-sections.js"></script>
+<script src="libs/htmlwidgets-1.5.2/htmlwidgets.js"></script>
+<script src="libs/chart.js-2.4.0/./dist/Chart.min.js"></script>
+<script src="libs/chartJSRadar-binding-0.3.1/chartJSRadar.js"></script>
 
 
 <style type="text/css">
@@ -149,6 +152,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="2.3.1" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#qdap"><i class="fa fa-check"></i><b>2.3.1</b> qdap</a></li>
 <li class="chapter" data-level="2.3.2" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#tidytext-1"><i class="fa fa-check"></i><b>2.3.2</b> tidytext</a></li>
 </ul></li>
+<li class="chapter" data-level="2.4" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#word-counts"><i class="fa fa-check"></i><b>2.4</b> Word Counts</a></li>
+<li class="chapter" data-level="2.5" data-path="sentimentanalysis.html"><a href="sentimentanalysis.html#comparison-cloud"><i class="fa fa-check"></i><b>2.5</b> Comparison Cloud</a></li>
 </ul></li>
 <li class="chapter" data-level="3" data-path="applications.html"><a href="applications.html"><i class="fa fa-check"></i><b>3</b> Applications</a><ul>
 <li class="chapter" data-level="3.1" data-path="applications.html"><a href="applications.html#example-one"><i class="fa fa-check"></i><b>3.1</b> Example one</a></li>
@@ -182,7 +187,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb1-2"><a href="sentimentanalysis.html#cb1-2"></a><span class="kw">library</span>(qdap)</span>
 <span id="cb1-3"><a href="sentimentanalysis.html#cb1-3"></a><span class="kw">library</span>(tidytext)</span>
 <span id="cb1-4"><a href="sentimentanalysis.html#cb1-4"></a><span class="kw">library</span>(magrittr)</span>
-<span id="cb1-5"><a href="sentimentanalysis.html#cb1-5"></a><span class="kw">library</span>(tm)</span></code></pre></div>
+<span id="cb1-5"><a href="sentimentanalysis.html#cb1-5"></a><span class="kw">library</span>(tm)</span>
+<span id="cb1-6"><a href="sentimentanalysis.html#cb1-6"></a><span class="kw">library</span>(ggthemes)</span></code></pre></div>
 <p>Sentiment analysis is the extraction of the emotional intent of text.</p>
 <p>As much as possible, I will build examples using the text from <u>The Adventures of Tom Sawyer</u>, available on <a href="https://gutenberg.org" class="uri">https://gutenberg.org</a> and accessible using the <strong>gutenbergr</strong> package.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="sentimentanalysis.html#cb2-1"></a><span class="kw">library</span>(gutenbergr)</span>
@@ -461,32 +467,176 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb25-10"><a href="sentimentanalysis.html#cb25-10"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Adventures of Tom Sawyer Chronological Polarity&quot;</span>)</span></code></pre></div>
 <pre><code>## `geom_smooth()` using method = &#39;loess&#39; and formula &#39;y ~ x&#39;</code></pre>
 <p><img src="text-book_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>Create to strings, one with the positive chapters, and one from the negative chapters.</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="sentimentanalysis.html#cb27-1"></a>sawyer_poloarity_pos &lt;-<span class="st"> </span>sawyer_tm_polarity_<span class="dv">2</span><span class="op">$</span>all <span class="op">%&gt;%</span></span>
+<span id="cb27-2"><a href="sentimentanalysis.html#cb27-2"></a><span class="st">  </span><span class="kw">filter</span>(polarity <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>) <span class="op">%&gt;%</span></span>
+<span id="cb27-3"><a href="sentimentanalysis.html#cb27-3"></a><span class="st">  </span><span class="kw">pull</span>(text.var) <span class="op">%&gt;%</span></span>
+<span id="cb27-4"><a href="sentimentanalysis.html#cb27-4"></a><span class="st">  </span><span class="kw">paste</span>(<span class="dt">collapse =</span> <span class="st">&quot; &quot;</span>)</span>
+<span id="cb27-5"><a href="sentimentanalysis.html#cb27-5"></a></span>
+<span id="cb27-6"><a href="sentimentanalysis.html#cb27-6"></a>sawyer_poloarity_neg &lt;-<span class="st"> </span>sawyer_tm_polarity_<span class="dv">2</span><span class="op">$</span>all <span class="op">%&gt;%</span></span>
+<span id="cb27-7"><a href="sentimentanalysis.html#cb27-7"></a><span class="st">  </span><span class="kw">filter</span>(polarity <span class="op">&lt;</span><span class="st"> </span><span class="dv">0</span>) <span class="op">%&gt;%</span></span>
+<span id="cb27-8"><a href="sentimentanalysis.html#cb27-8"></a><span class="st">  </span><span class="kw">pull</span>(text.var) <span class="op">%&gt;%</span></span>
+<span id="cb27-9"><a href="sentimentanalysis.html#cb27-9"></a><span class="st">  </span><span class="kw">paste</span>(<span class="dt">collapse =</span> <span class="st">&quot; &quot;</span>) </span>
+<span id="cb27-10"><a href="sentimentanalysis.html#cb27-10"></a></span>
+<span id="cb27-11"><a href="sentimentanalysis.html#cb27-11"></a>sawyer_polarity_tdm &lt;-<span class="st"> </span><span class="kw">c</span>(sawyer_poloarity_pos, sawyer_poloarity_neg) <span class="op">%&gt;%</span></span>
+<span id="cb27-12"><a href="sentimentanalysis.html#cb27-12"></a><span class="st">  </span><span class="kw">VectorSource</span>() <span class="op">%&gt;%</span></span>
+<span id="cb27-13"><a href="sentimentanalysis.html#cb27-13"></a><span class="st">  </span><span class="kw">VCorpus</span>() <span class="op">%&gt;%</span></span>
+<span id="cb27-14"><a href="sentimentanalysis.html#cb27-14"></a><span class="st">  </span><span class="kw">TermDocumentMatrix</span>(<span class="dt">control =</span> <span class="kw">list</span>(<span class="dt">weighting =</span> weightTfIdf, </span>
+<span id="cb27-15"><a href="sentimentanalysis.html#cb27-15"></a>                                    <span class="dt">removePunctuation =</span> <span class="ot">TRUE</span>,</span>
+<span id="cb27-16"><a href="sentimentanalysis.html#cb27-16"></a>                                    <span class="dt">stopwords =</span> <span class="kw">stopwords</span>(<span class="dt">kind =</span> <span class="st">&quot;en&quot;</span>)))</span></code></pre></div>
+<p>Often authors will use more words when they are more passionate. Lengthy reviews may inflate overall sentiment since the reviews will inherently contain more positive or negative language as the review lengthens.</p>
 </div>
 <div id="tidytext-1" class="section level3">
 <h3><span class="header-section-number">2.3.2</span> tidytext</h3>
 <p>The tidy way to score polarity is tagging individual words as “positive” and “negative” using the <code>bing</code> lexicon, then defining polarity as difference in counts.</p>
-<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="sentimentanalysis.html#cb27-1"></a>sawyer_tidy &lt;-<span class="st"> </span>sawyer <span class="op">%&gt;%</span></span>
-<span id="cb27-2"><a href="sentimentanalysis.html#cb27-2"></a><span class="st">  </span><span class="kw">unnest_tokens</span>(<span class="dt">output =</span> <span class="st">&quot;word&quot;</span>, <span class="dt">input =</span> text)</span>
-<span id="cb27-3"><a href="sentimentanalysis.html#cb27-3"></a></span>
-<span id="cb27-4"><a href="sentimentanalysis.html#cb27-4"></a>sawyer_tidy_polarity &lt;-<span class="st"> </span>sawyer_tidy <span class="op">%&gt;%</span></span>
-<span id="cb27-5"><a href="sentimentanalysis.html#cb27-5"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;bing&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
-<span id="cb27-6"><a href="sentimentanalysis.html#cb27-6"></a><span class="st">  </span><span class="kw">count</span>(chapter, sentiment) <span class="op">%&gt;%</span></span>
-<span id="cb27-7"><a href="sentimentanalysis.html#cb27-7"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> sentiment, <span class="dt">values_from =</span> n, <span class="dt">values_fill =</span> <span class="dv">0</span>) <span class="op">%&gt;%</span></span>
-<span id="cb27-8"><a href="sentimentanalysis.html#cb27-8"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">polarity =</span> positive <span class="op">-</span><span class="st"> </span>negative)</span>
-<span id="cb27-9"><a href="sentimentanalysis.html#cb27-9"></a></span>
-<span id="cb27-10"><a href="sentimentanalysis.html#cb27-10"></a>sawyer_tidy_polarity <span class="op">%&gt;%</span><span class="st"> </span></span>
-<span id="cb27-11"><a href="sentimentanalysis.html#cb27-11"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">y =</span> polarity)) <span class="op">+</span></span>
-<span id="cb27-12"><a href="sentimentanalysis.html#cb27-12"></a><span class="st">  </span><span class="kw">geom_point</span>() <span class="op">+</span></span>
-<span id="cb27-13"><a href="sentimentanalysis.html#cb27-13"></a><span class="st">  </span><span class="kw">geom_segment</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">xend =</span> chapter, <span class="dt">y =</span> <span class="dv">0</span>, <span class="dt">yend =</span> polarity)) <span class="op">+</span></span>
-<span id="cb27-14"><a href="sentimentanalysis.html#cb27-14"></a><span class="st">  </span><span class="kw">geom_smooth</span>() <span class="op">+</span></span>
-<span id="cb27-15"><a href="sentimentanalysis.html#cb27-15"></a><span class="st">  </span><span class="kw">geom_hline</span>(<span class="dt">yintercept =</span> <span class="dv">0</span>, <span class="dt">color =</span> <span class="st">&quot;red&quot;</span>) <span class="op">+</span></span>
-<span id="cb27-16"><a href="sentimentanalysis.html#cb27-16"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
-<span id="cb27-17"><a href="sentimentanalysis.html#cb27-17"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Adventures of Tom Sawyer Chronological Polarity&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="sentimentanalysis.html#cb28-1"></a>sawyer_tidy &lt;-<span class="st"> </span>sawyer <span class="op">%&gt;%</span></span>
+<span id="cb28-2"><a href="sentimentanalysis.html#cb28-2"></a><span class="st">  </span><span class="kw">unnest_tokens</span>(<span class="dt">output =</span> <span class="st">&quot;word&quot;</span>, <span class="dt">input =</span> text)</span>
+<span id="cb28-3"><a href="sentimentanalysis.html#cb28-3"></a></span>
+<span id="cb28-4"><a href="sentimentanalysis.html#cb28-4"></a>sawyer_tidy_polarity &lt;-<span class="st"> </span>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb28-5"><a href="sentimentanalysis.html#cb28-5"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;bing&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb28-6"><a href="sentimentanalysis.html#cb28-6"></a><span class="st">  </span><span class="kw">count</span>(chapter, sentiment) <span class="op">%&gt;%</span></span>
+<span id="cb28-7"><a href="sentimentanalysis.html#cb28-7"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> sentiment, <span class="dt">values_from =</span> n, <span class="dt">values_fill =</span> <span class="dv">0</span>) <span class="op">%&gt;%</span></span>
+<span id="cb28-8"><a href="sentimentanalysis.html#cb28-8"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">polarity =</span> positive <span class="op">-</span><span class="st"> </span>negative,</span>
+<span id="cb28-9"><a href="sentimentanalysis.html#cb28-9"></a>         <span class="dt">polarity_desc =</span> <span class="kw">if_else</span>(polarity <span class="op">&gt;=</span><span class="st"> </span><span class="dv">0</span>, <span class="st">&quot;Positive&quot;</span>, <span class="st">&quot;Negative&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb28-10"><a href="sentimentanalysis.html#cb28-10"></a><span class="st">  </span><span class="kw">inner_join</span>(sawyer_tidy <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">count</span>(chapter), <span class="dt">by =</span> <span class="st">&quot;chapter&quot;</span>)</span>
+<span id="cb28-11"><a href="sentimentanalysis.html#cb28-11"></a></span>
+<span id="cb28-12"><a href="sentimentanalysis.html#cb28-12"></a>sawyer_tidy_polarity <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb28-13"><a href="sentimentanalysis.html#cb28-13"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">y =</span> polarity)) <span class="op">+</span></span>
+<span id="cb28-14"><a href="sentimentanalysis.html#cb28-14"></a><span class="st">  </span><span class="kw">geom_point</span>() <span class="op">+</span></span>
+<span id="cb28-15"><a href="sentimentanalysis.html#cb28-15"></a><span class="st">  </span><span class="kw">geom_segment</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">xend =</span> chapter, <span class="dt">y =</span> <span class="dv">0</span>, <span class="dt">yend =</span> polarity)) <span class="op">+</span></span>
+<span id="cb28-16"><a href="sentimentanalysis.html#cb28-16"></a><span class="st">  </span><span class="kw">geom_smooth</span>() <span class="op">+</span></span>
+<span id="cb28-17"><a href="sentimentanalysis.html#cb28-17"></a><span class="st">  </span><span class="kw">geom_hline</span>(<span class="dt">yintercept =</span> <span class="dv">0</span>, <span class="dt">color =</span> <span class="st">&quot;red&quot;</span>) <span class="op">+</span></span>
+<span id="cb28-18"><a href="sentimentanalysis.html#cb28-18"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb28-19"><a href="sentimentanalysis.html#cb28-19"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Adventures of Tom Sawyer Chronological Polarity&quot;</span>)</span></code></pre></div>
 <pre><code>## `geom_smooth()` using method = &#39;loess&#39; and formula &#39;y ~ x&#39;</code></pre>
-<p><img src="text-book_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p><img src="text-book_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="sentimentanalysis.html#cb30-1"></a>sawyer_tidy_polarity <span class="op">%&gt;%</span></span>
+<span id="cb30-2"><a href="sentimentanalysis.html#cb30-2"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> polarity, <span class="dt">y =</span> n, <span class="dt">color =</span> polarity_desc)) <span class="op">+</span></span>
+<span id="cb30-3"><a href="sentimentanalysis.html#cb30-3"></a><span class="st">  </span><span class="kw">geom_point</span>(<span class="dt">alpha =</span> <span class="fl">0.6</span>) <span class="op">+</span></span>
+<span id="cb30-4"><a href="sentimentanalysis.html#cb30-4"></a><span class="st">  </span><span class="kw">geom_smooth</span>(<span class="dt">method =</span> <span class="st">&quot;lm&quot;</span>, <span class="dt">formula =</span> <span class="st">&quot;y ~ x&quot;</span>, <span class="dt">se =</span> <span class="ot">FALSE</span>) <span class="op">+</span></span>
+<span id="cb30-5"><a href="sentimentanalysis.html#cb30-5"></a><span class="st">  </span><span class="kw">scale_color_few</span>() <span class="op">+</span></span>
+<span id="cb30-6"><a href="sentimentanalysis.html#cb30-6"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb30-7"><a href="sentimentanalysis.html#cb30-7"></a><span class="st">  </span><span class="kw">theme</span>(<span class="dt">legend.position =</span> <span class="st">&quot;top&quot;</span>) <span class="op">+</span></span>
+<span id="cb30-8"><a href="sentimentanalysis.html#cb30-8"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Polarity is usually a function of length&quot;</span>, <span class="dt">color =</span> <span class="ot">NULL</span>)</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-13-2.png" width="672" /></p>
 <p>In this analysis, the most positive chapter is 4 and the most negative is 9.</p>
-
 </div>
+</div>
+<div id="word-counts" class="section level2">
+<h2><span class="header-section-number">2.4</span> Word Counts</h2>
+<p>If you are using a bag of words approach (ignoring valence-shifters), you can simply count words in the two ranges, positive and negative.</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="sentimentanalysis.html#cb31-1"></a>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb31-2"><a href="sentimentanalysis.html#cb31-2"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;bing&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb31-3"><a href="sentimentanalysis.html#cb31-3"></a><span class="st">  </span><span class="kw">count</span>(word, sentiment) <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb31-4"><a href="sentimentanalysis.html#cb31-4"></a><span class="st">  </span><span class="kw">group_by</span>(sentiment) <span class="op">%&gt;%</span></span>
+<span id="cb31-5"><a href="sentimentanalysis.html#cb31-5"></a><span class="st">  </span><span class="kw">slice_max</span>(<span class="dt">order_by =</span> n, <span class="dt">n =</span> <span class="dv">8</span>) <span class="op">%&gt;%</span></span>
+<span id="cb31-6"><a href="sentimentanalysis.html#cb31-6"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">n =</span> <span class="kw">if_else</span>(sentiment <span class="op">==</span><span class="st"> &quot;negative&quot;</span>, <span class="op">-</span>n, n)) <span class="op">%&gt;%</span></span>
+<span id="cb31-7"><a href="sentimentanalysis.html#cb31-7"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> <span class="kw">fct_reorder</span>(word, n), <span class="dt">y =</span> n, <span class="dt">fill =</span> sentiment, <span class="dt">color =</span> sentiment)) <span class="op">+</span></span>
+<span id="cb31-8"><a href="sentimentanalysis.html#cb31-8"></a><span class="st">  </span><span class="kw">geom_col</span>(<span class="dt">alpha =</span> <span class="fl">0.6</span>) <span class="op">+</span></span>
+<span id="cb31-9"><a href="sentimentanalysis.html#cb31-9"></a><span class="st">  </span><span class="kw">scale_fill_few</span>() <span class="op">+</span></span>
+<span id="cb31-10"><a href="sentimentanalysis.html#cb31-10"></a><span class="st">  </span><span class="kw">scale_color_few</span>() <span class="op">+</span></span>
+<span id="cb31-11"><a href="sentimentanalysis.html#cb31-11"></a><span class="st">  </span><span class="kw">coord_flip</span>() <span class="op">+</span></span>
+<span id="cb31-12"><a href="sentimentanalysis.html#cb31-12"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb31-13"><a href="sentimentanalysis.html#cb31-13"></a><span class="st">  </span><span class="kw">theme</span>(<span class="dt">legend.position =</span> <span class="st">&quot;top&quot;</span>) <span class="op">+</span></span>
+<span id="cb31-14"><a href="sentimentanalysis.html#cb31-14"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Tom Sawyer Top Sentiment Words&quot;</span>, <span class="dt">x =</span> <span class="st">&quot;Word Count&quot;</span>, <span class="dt">y =</span> <span class="ot">NULL</span>, </span>
+<span id="cb31-15"><a href="sentimentanalysis.html#cb31-15"></a>       <span class="dt">fill =</span> <span class="ot">NULL</span>, <span class="dt">color =</span> <span class="ot">NULL</span>)</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+</div>
+<div id="comparison-cloud" class="section level2">
+<h2><span class="header-section-number">2.5</span> Comparison Cloud</h2>
+<p>Word clouds are a nice way to get an overview of the data.</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="sentimentanalysis.html#cb32-1"></a>sawyer_tm_polarity_<span class="dv">2</span><span class="op">$</span>all <span class="op">%&gt;%</span></span>
+<span id="cb32-2"><a href="sentimentanalysis.html#cb32-2"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">polarity =</span> <span class="kw">case_when</span>(polarity <span class="op">&lt;</span><span class="st"> </span><span class="dv">0</span> <span class="op">~</span><span class="st"> &quot;Negative&quot;</span>, </span>
+<span id="cb32-3"><a href="sentimentanalysis.html#cb32-3"></a>                              polarity <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span> <span class="op">~</span><span class="st"> &quot;Positive&quot;</span>, </span>
+<span id="cb32-4"><a href="sentimentanalysis.html#cb32-4"></a>                              <span class="ot">TRUE</span> <span class="op">~</span><span class="st"> &quot;Neutral&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb32-5"><a href="sentimentanalysis.html#cb32-5"></a><span class="st">  </span><span class="kw">unnest_tokens</span>(<span class="dt">output =</span> <span class="st">&quot;word&quot;</span>, <span class="dt">input =</span> text.var) <span class="op">%&gt;%</span></span>
+<span id="cb32-6"><a href="sentimentanalysis.html#cb32-6"></a><span class="st">  </span><span class="kw">anti_join</span>(stop_words, <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb32-7"><a href="sentimentanalysis.html#cb32-7"></a><span class="st">  </span><span class="kw">filter</span>(<span class="op">!</span><span class="kw">str_detect</span>(word, <span class="st">&quot;[0-9]&quot;</span>) <span class="op">&amp;</span><span class="st"> </span>polarity <span class="op">!=</span><span class="st"> &quot;Neutral&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb32-8"><a href="sentimentanalysis.html#cb32-8"></a><span class="st">  </span><span class="kw">count</span>(word, polarity, <span class="dt">wt =</span> wc) <span class="op">%&gt;%</span></span>
+<span id="cb32-9"><a href="sentimentanalysis.html#cb32-9"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> polarity, <span class="dt">values_from =</span> n, <span class="dt">values_fill =</span> <span class="dv">0</span>) <span class="op">%&gt;%</span></span>
+<span id="cb32-10"><a href="sentimentanalysis.html#cb32-10"></a><span class="st">  </span>data.table<span class="op">::</span><span class="kw">data.table</span>() <span class="op">%&gt;%</span></span>
+<span id="cb32-11"><a href="sentimentanalysis.html#cb32-11"></a><span class="st">  </span><span class="kw">as.matrix</span>(<span class="dt">rownames =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb32-12"><a href="sentimentanalysis.html#cb32-12"></a><span class="st">  </span>wordcloud<span class="op">::</span><span class="kw">comparison.cloud</span>(<span class="dt">max.words =</span> <span class="dv">50</span>)</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-15-1.png" width="672" /></p>
+<div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb33-1"><a href="sentimentanalysis.html#cb33-1"></a>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb33-2"><a href="sentimentanalysis.html#cb33-2"></a><span class="st">  </span><span class="kw">anti_join</span>(stop_words, <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb33-3"><a href="sentimentanalysis.html#cb33-3"></a><span class="st">  </span><span class="kw">filter</span>(<span class="op">!</span><span class="kw">str_detect</span>(word, <span class="st">&quot;[0-9]&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb33-4"><a href="sentimentanalysis.html#cb33-4"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;nrc&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb33-5"><a href="sentimentanalysis.html#cb33-5"></a><span class="st">  </span><span class="kw">filter</span>(<span class="op">!</span>sentiment <span class="op">%in%</span><span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;positive&quot;</span>, <span class="st">&quot;negative&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb33-6"><a href="sentimentanalysis.html#cb33-6"></a><span class="st">  </span><span class="kw">count</span>(sentiment, word) <span class="op">%&gt;%</span></span>
+<span id="cb33-7"><a href="sentimentanalysis.html#cb33-7"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> sentiment, <span class="dt">values_from =</span> n, <span class="dt">values_fill =</span> <span class="dv">0</span>) <span class="op">%&gt;%</span></span>
+<span id="cb33-8"><a href="sentimentanalysis.html#cb33-8"></a><span class="st">  </span><span class="kw">data.frame</span>(<span class="dt">row.names =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb33-9"><a href="sentimentanalysis.html#cb33-9"></a><span class="st">  </span>wordcloud<span class="op">::</span><span class="kw">comparison.cloud</span>(<span class="dt">max.words =</span> <span class="dv">50</span>, <span class="dt">title.size =</span> <span class="fl">1.5</span>)</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="sentimentanalysis.html#cb34-1"></a>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb34-2"><a href="sentimentanalysis.html#cb34-2"></a><span class="st">  </span><span class="kw">anti_join</span>(stop_words, <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb34-3"><a href="sentimentanalysis.html#cb34-3"></a><span class="st">  </span><span class="kw">filter</span>(<span class="op">!</span><span class="kw">str_detect</span>(word, <span class="st">&quot;[0-9]&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb34-4"><a href="sentimentanalysis.html#cb34-4"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;nrc&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb34-5"><a href="sentimentanalysis.html#cb34-5"></a><span class="st">  </span><span class="kw">filter</span>(sentiment <span class="op">%in%</span><span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;positive&quot;</span>, <span class="st">&quot;negative&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb34-6"><a href="sentimentanalysis.html#cb34-6"></a><span class="st">  </span><span class="kw">count</span>(chapter, sentiment) <span class="op">%&gt;%</span></span>
+<span id="cb34-7"><a href="sentimentanalysis.html#cb34-7"></a><span class="st">  </span><span class="kw">group_by</span>(chapter) <span class="op">%&gt;%</span></span>
+<span id="cb34-8"><a href="sentimentanalysis.html#cb34-8"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">pct =</span> n <span class="op">/</span><span class="st"> </span><span class="kw">sum</span>(n)) <span class="op">%&gt;%</span></span>
+<span id="cb34-9"><a href="sentimentanalysis.html#cb34-9"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> chapter, <span class="dt">y =</span> pct, <span class="dt">fill =</span> sentiment, <span class="dt">color =</span> sentiment)) <span class="op">+</span><span class="st"> </span></span>
+<span id="cb34-10"><a href="sentimentanalysis.html#cb34-10"></a><span class="st">  </span><span class="kw">geom_area</span>(<span class="dt">alpha =</span> <span class="fl">0.6</span>) <span class="op">+</span></span>
+<span id="cb34-11"><a href="sentimentanalysis.html#cb34-11"></a><span class="st">  </span><span class="kw">scale_x_continuous</span>(<span class="dt">breaks =</span> <span class="dv">1</span><span class="op">:</span><span class="dv">35</span>, <span class="dt">minor_breaks =</span> <span class="ot">NULL</span>) <span class="op">+</span></span>
+<span id="cb34-12"><a href="sentimentanalysis.html#cb34-12"></a><span class="st">  </span><span class="kw">scale_fill_few</span>() <span class="op">+</span></span>
+<span id="cb34-13"><a href="sentimentanalysis.html#cb34-13"></a><span class="st">  </span><span class="kw">scale_color_few</span>() <span class="op">+</span></span>
+<span id="cb34-14"><a href="sentimentanalysis.html#cb34-14"></a><span class="st">  </span><span class="kw">geom_hline</span>(<span class="dt">yintercept =</span> <span class="fl">0.5</span>, <span class="dt">linetype =</span> <span class="dv">2</span>) <span class="op">+</span></span>
+<span id="cb34-15"><a href="sentimentanalysis.html#cb34-15"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb34-16"><a href="sentimentanalysis.html#cb34-16"></a><span class="st">  </span><span class="kw">theme</span>(<span class="dt">legend.position =</span> <span class="st">&quot;top&quot;</span>) <span class="op">+</span></span>
+<span id="cb34-17"><a href="sentimentanalysis.html#cb34-17"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Sentiment Proportion by Chapter&quot;</span>, <span class="dt">x =</span> <span class="ot">NULL</span>, <span class="dt">y =</span> <span class="ot">NULL</span>, <span class="dt">fill =</span> <span class="ot">NULL</span>, <span class="dt">color =</span> <span class="ot">NULL</span>)</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="sentimentanalysis.html#cb35-1"></a>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb35-2"><a href="sentimentanalysis.html#cb35-2"></a><span class="st">  </span><span class="kw">anti_join</span>(stop_words, <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb35-3"><a href="sentimentanalysis.html#cb35-3"></a><span class="st">  </span><span class="kw">filter</span>(<span class="op">!</span><span class="kw">str_detect</span>(word, <span class="st">&quot;[0-9]&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb35-4"><a href="sentimentanalysis.html#cb35-4"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;afinn&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb35-5"><a href="sentimentanalysis.html#cb35-5"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> value)) <span class="op">+</span></span>
+<span id="cb35-6"><a href="sentimentanalysis.html#cb35-6"></a><span class="st">  </span><span class="kw">geom_density</span>(<span class="dt">fill =</span> ggthemes<span class="op">::</span><span class="kw">few_pal</span>()(<span class="dv">1</span>), <span class="dt">alpha =</span> <span class="fl">0.6</span>) <span class="op">+</span></span>
+<span id="cb35-7"><a href="sentimentanalysis.html#cb35-7"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb35-8"><a href="sentimentanalysis.html#cb35-8"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;AFINN Score Density&quot;</span>)</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-18-1.png" width="672" /></p>
+<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="sentimentanalysis.html#cb36-1"></a>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb36-2"><a href="sentimentanalysis.html#cb36-2"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;bing&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb36-3"><a href="sentimentanalysis.html#cb36-3"></a><span class="st">  </span><span class="kw">count</span>(chapter, line, sentiment) <span class="op">%&gt;%</span></span>
+<span id="cb36-4"><a href="sentimentanalysis.html#cb36-4"></a><span class="st">  </span><span class="kw">pivot_wider</span>(<span class="dt">names_from =</span> sentiment, <span class="dt">values_from =</span> n, <span class="dt">values_fill =</span> <span class="dv">0</span>) <span class="op">%&gt;%</span></span>
+<span id="cb36-5"><a href="sentimentanalysis.html#cb36-5"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">polarity =</span> positive <span class="op">-</span><span class="st"> </span>negative) <span class="op">%&gt;%</span></span>
+<span id="cb36-6"><a href="sentimentanalysis.html#cb36-6"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">x =</span> <span class="kw">as.factor</span>(chapter), <span class="dt">y =</span> polarity)) <span class="op">+</span></span>
+<span id="cb36-7"><a href="sentimentanalysis.html#cb36-7"></a><span class="st">  </span><span class="kw">geom_boxplot</span>() <span class="op">+</span></span>
+<span id="cb36-8"><a href="sentimentanalysis.html#cb36-8"></a><span class="st">  </span><span class="kw">geom_jitter</span>(<span class="kw">aes</span>(<span class="dt">color =</span> <span class="kw">as.factor</span>(chapter)), <span class="dt">alpha =</span> <span class="fl">0.6</span>, <span class="dt">size =</span> <span class="fl">.5</span>, <span class="dt">show.legend =</span> <span class="ot">FALSE</span>) <span class="op">+</span></span>
+<span id="cb36-9"><a href="sentimentanalysis.html#cb36-9"></a><span class="st">  </span><span class="kw">theme_minimal</span>() <span class="op">+</span></span>
+<span id="cb36-10"><a href="sentimentanalysis.html#cb36-10"></a><span class="st">  </span><span class="kw">labs</span>(<span class="dt">title =</span> <span class="st">&quot;Chapter Polarity&quot;</span>)</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+<p>Bar plots are usually a clearer alternative, but radar charts do look pretty.</p>
+<p><a href="https://en.wikipedia.org/wiki/Robert_Plutchik#/media/File:Plutchik-wheel.svg" class="uri">https://en.wikipedia.org/wiki/Robert_Plutchik#/media/File:Plutchik-wheel.svg</a></p>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="sentimentanalysis.html#cb37-1"></a>dat &lt;-<span class="st"> </span>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb37-2"><a href="sentimentanalysis.html#cb37-2"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;nrc&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb37-3"><a href="sentimentanalysis.html#cb37-3"></a><span class="st">  </span><span class="kw">filter</span>(<span class="op">!</span>sentiment <span class="op">%in%</span><span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;positive&quot;</span>, <span class="st">&quot;negative&quot;</span>)) <span class="op">%&gt;%</span></span>
+<span id="cb37-4"><a href="sentimentanalysis.html#cb37-4"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">sentiment =</span> <span class="kw">case_when</span>(sentiment <span class="op">==</span><span class="st"> &quot;joy&quot;</span> <span class="op">~</span><span class="st"> </span><span class="dv">1</span>,</span>
+<span id="cb37-5"><a href="sentimentanalysis.html#cb37-5"></a>                               sentiment <span class="op">==</span><span class="st"> &quot;trust&quot;</span> <span class="op">~</span><span class="st"> </span><span class="dv">2</span>,</span>
+<span id="cb37-6"><a href="sentimentanalysis.html#cb37-6"></a>                               sentiment <span class="op">==</span><span class="st"> &quot;fear&quot;</span> <span class="op">~</span><span class="st"> </span><span class="dv">3</span>,</span>
+<span id="cb37-7"><a href="sentimentanalysis.html#cb37-7"></a>                               sentiment <span class="op">==</span><span class="st"> &quot;surprise&quot;</span> <span class="op">~</span><span class="st"> </span><span class="dv">4</span>,</span>
+<span id="cb37-8"><a href="sentimentanalysis.html#cb37-8"></a>                               sentiment <span class="op">==</span><span class="st"> &quot;sadness&quot;</span> <span class="op">~</span><span class="st"> </span><span class="dv">5</span>,</span>
+<span id="cb37-9"><a href="sentimentanalysis.html#cb37-9"></a>                               sentiment <span class="op">==</span><span class="st"> &quot;disgust&quot;</span> <span class="op">~</span><span class="st"> </span><span class="dv">6</span>,</span>
+<span id="cb37-10"><a href="sentimentanalysis.html#cb37-10"></a>                               sentiment <span class="op">==</span><span class="st"> &quot;anger&quot;</span> <span class="op">~</span><span class="st"> </span><span class="dv">7</span>,</span>
+<span id="cb37-11"><a href="sentimentanalysis.html#cb37-11"></a>                               sentiment <span class="op">==</span><span class="st"> &quot;anticipation&quot;</span> <span class="op">~</span><span class="st"> </span><span class="dv">8</span>,</span>
+<span id="cb37-12"><a href="sentimentanalysis.html#cb37-12"></a>                               <span class="ot">TRUE</span> <span class="op">~</span><span class="st"> </span><span class="dv">9</span>),</span>
+<span id="cb37-13"><a href="sentimentanalysis.html#cb37-13"></a>         <span class="dt">sentiment =</span> <span class="kw">factor</span>(sentiment, <span class="dt">levels =</span> <span class="kw">c</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">9</span>),</span>
+<span id="cb37-14"><a href="sentimentanalysis.html#cb37-14"></a>                            <span class="dt">labels =</span> <span class="kw">c</span>(<span class="st">&quot;joy&quot;</span>, <span class="st">&quot;trust&quot;</span>, <span class="st">&quot;fear&quot;</span>, <span class="st">&quot;surprise&quot;</span>,</span>
+<span id="cb37-15"><a href="sentimentanalysis.html#cb37-15"></a>                                       <span class="st">&quot;sadness&quot;</span>, <span class="st">&quot;disgust&quot;</span>, <span class="st">&quot;anger&quot;</span>,</span>
+<span id="cb37-16"><a href="sentimentanalysis.html#cb37-16"></a>                                       <span class="st">&quot;anticipation&quot;</span>, <span class="st">&quot;other&quot;</span>))) <span class="op">%&gt;%</span></span>
+<span id="cb37-17"><a href="sentimentanalysis.html#cb37-17"></a><span class="st">  </span><span class="kw">count</span>(sentiment) </span>
+<span id="cb37-18"><a href="sentimentanalysis.html#cb37-18"></a></span>
+<span id="cb37-19"><a href="sentimentanalysis.html#cb37-19"></a>dat <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb37-20"><a href="sentimentanalysis.html#cb37-20"></a><span class="st">  </span>radarchart<span class="op">::</span><span class="kw">chartJSRadar</span>()</span></code></pre></div>
+<canvas id="htmlwidget-529dc268df4912fc5de2" class="chartJSRadar html-widget" width="672" height="480"></canvas>
+<script type="application/json" data-for="htmlwidget-529dc268df4912fc5de2">{"x":{"data":{"labels":["joy","trust","fear","surprise","sadness","disgust","anger","anticipation"],"datasets":[{"label":"n","data":[1358,1732,1439,894,1501,945,1123,1786],"backgroundColor":"rgba(255,0,0,0.2)","borderColor":"rgba(255,0,0,0.8)","pointBackgroundColor":"rgba(255,0,0,0.8)","pointBorderColor":"#fff","pointHoverBackgroundColor":"#fff","pointHoverBorderColor":"rgba(255,0,0,0.8)"}]},"options":{"responsive":true,"title":{"display":false,"text":null},"scale":{"ticks":{"min":0},"pointLabels":{"fontSize":18}},"tooltips":{"enabled":true,"mode":"label"},"legend":{"display":true}}},"evals":[],"jsHooks":[]}</script>
+<div class="sourceCode" id="cb38"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb38-1"><a href="sentimentanalysis.html#cb38-1"></a>sawyer_tidy <span class="op">%&gt;%</span></span>
+<span id="cb38-2"><a href="sentimentanalysis.html#cb38-2"></a><span class="st">  </span><span class="kw">inner_join</span>(<span class="kw">get_sentiments</span>(<span class="st">&quot;afinn&quot;</span>), <span class="dt">by =</span> <span class="st">&quot;word&quot;</span>) <span class="op">%&gt;%</span></span>
+<span id="cb38-3"><a href="sentimentanalysis.html#cb38-3"></a><span class="st">  </span><span class="kw">count</span>(chapter, value) <span class="op">%&gt;%</span></span>
+<span id="cb38-4"><a href="sentimentanalysis.html#cb38-4"></a><span class="st">  </span><span class="kw">ggplot</span>(<span class="kw">aes</span>(<span class="dt">area =</span> n, <span class="dt">fill =</span> value)) <span class="op">+</span></span>
+<span id="cb38-5"><a href="sentimentanalysis.html#cb38-5"></a><span class="st">  </span>treemapify<span class="op">::</span><span class="kw">geom_treemap</span>()</span></code></pre></div>
+<p><img src="text-book_files/figure-html/unnamed-chunk-21-1.png" width="672" /></p>
+
 </div>
 </div>
             </section>
