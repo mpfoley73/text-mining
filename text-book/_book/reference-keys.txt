@@ -16,3 +16,5 @@ qdap
 tidytext-1
 word-counts
 comparison-cloud
+tab:unnamed-chunk-5
+tab:unnamed-chunk-8

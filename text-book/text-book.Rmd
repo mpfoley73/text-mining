@@ -1,3 +1,52 @@
+--- 
+title: "Text Mining using R"
+author: "Michael Foley"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+output:
+  bookdown::html_book:
+    fig_caption: true
+    lib_dir: assets
+    split_by: section
+    config:
+      toolbar:
+        position: static
+documentclass: book
+bibliography: [book.bib, packages.bib]
+biblio-style: apalike
+link-citations: yes
+description: "Background and tutorial on text mining (topic modeling, sentiment analysis) using R."
+---
+
+# Intro {-}
+
+Placeholder
+
+
+
+<!--chapter:end:index.Rmd-->
+
+
+# Topic Modeling {#topicmodeling}
+
+Placeholder
+
+
+## LDA {#lda}
+#### Algorithm {-}
+#### Evaluation {-}
+##### Held-out Likelihood {-}
+##### Semantic Coherence {-}
+##### Exclusivity {-}
+## CTM {#ctm}
+## STM
+## Data Formats
+#### tm {-}
+#### quanteda {-}
+#### tidytext {-}
+
+<!--chapter:end:01-topic-modeling.Rmd-->
+
 # Sentiment Analysis {#sentimentanalysis}
 
 ```{r include=FALSE}
@@ -583,3 +632,28 @@ Since this is a comparison of a numeric outcome to a multinominal predictor (`pr
 # 
 # tbl_regression(my_lm)
 ```
+
+<!--chapter:end:02-sentiment-analysis.Rmd-->
+
+# Applications
+
+Some _significant_ applications are demonstrated in this chapter.
+
+## Example one
+
+## Example two
+
+<!--chapter:end:04-application.Rmd-->
+
+# Final Words
+
+We have finished a nice book.
+
+<!--chapter:end:05-summary.Rmd-->
+
+`r if (knitr::is_html_output()) '
+# References {-}
+'`
+
+<!--chapter:end:06-references.Rmd-->
+

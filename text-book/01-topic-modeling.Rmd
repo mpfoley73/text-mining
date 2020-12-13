@@ -49,3 +49,63 @@ The Correlated Topic Model (CTM) [@blei2007] builds on the LDA model (chapter \@
 
 Without the inclusion of covariates, STM reduces to a logistic-normal topic model, often
 called the Correlated Topic Model (CTM) (chapter \@ref(ctm)).
+
+
+## Data Formats
+
+There are five common text mining packages, each with their own format requirements. Whichever package you work in, there is a decent chance you will want to use a function from one of the others, so you need some fluency in them all.
+
+* **tm** works with Corpus objects (raw text with document and corpus metadata). Many **tm** algorithms work with a document-term matrix (DTM), a sparse matrix with one row per document, one column per term, and values equaling the word count or tf-idf. 
+
+* **quanteda** also works with Corpus objects, but has its own implementation. Many **quanteda** algorithms work with a document-feature matrix (DFM), again similar to **tm**'s DTM.
+
+* **tidytext** works with tibbles. Many **tidytext** algorithms work with tibbles with one row per token (usually a word, but possibly a large item of text), a frequency count column, and possibly other metadata columns.
+
+* **qdap** works with text fields in a data frame, so it does not require any particular data structure.
+
+* **sentimentr** is similar to **qdap**.
+
+Let's take the `sawyer_raw` data frame and pre-process it for all three packages.
+
+#### tm {-}
+
+Turn the character vector `sawyer_raw$text` into a text source with `VectorSource()`, then turn the text source into a corpus with `vCorpus()`. Clean the corpus with a series of utility functions. One particularly important function, `removeWords()`, removes stop words, plus any custom stop words. I would normally add "tom" because it is so ubiquitous throughout the text. However, in this case I won't because `stopwords` includes valence shifting words like "very" which are used in polarity scoring. I can remove them later for other exercises.
+
+```{r}
+# (sawyer_tm <- VCorpus(VectorSource(sawyer$text)) %>%
+#   tm_map(content_transformer(replace_abbreviation)) %>%
+#   tm_map(removePunctuation) %>%
+#   tm_map(removeNumbers) %>%
+#   tm_map(content_transformer(tolower)) %>%
+#   tm_map(removeWords, c(stopwords("en"), "tom")) %>%
+#   tm_map(stripWhitespace))
+```
+
+Each document in the `sawyer_tm` VCorpus is a line of text. Use `DocumentTermMaterix()` to convert the vCorpus into **tm**'s bag-of-words format, DTM.
+
+```{r}
+# (sawyer_tm_dtm <- DocumentTermMatrix(sawyer_tm))
+```
+
+This is a very sparse (nearly 100% sparse) matrix documents as rows and distinct words as columns.
+
+```{r}
+#   group_by(chapter) %>%
+#   mutate(text = paste(text, collapse = " ")) %>%
+#   slice_head(n = 1) %>%
+#   select(chapter, text)
+# 
+# sawyer_sent <- sawyer %>%
+#   sentSplit("text")
+# 
+# skimr::skim(sawyer)
+```
+
+#### quanteda {-}
+dafdafd
+
+#### tidytext {-}
+dafdafd
+
+
+
