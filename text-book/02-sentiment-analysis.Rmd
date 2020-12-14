@@ -386,7 +386,7 @@ Something is still wrong here. It removed *mighty* as a positive word, but did n
 Here is a plot of the polarity results.
 
 ```{r fig.height=8, fig.width=6, warning=FALSE}
-plot(sawyer_tm_polarity_2)
+# plot(sawyer_tm_polarity_2)
 ```
 
 Chapter 22 had the lowest polarity score and chapter 34 the highest.
@@ -573,13 +573,13 @@ One more cleaning step. Since these reviews are recorded in web sites, they are 
 Since this is a comparison of a numeric outcome to a multinominal predictor (`property_name`) or ordinal predictor(`review_rating`), you could perform an ANOVA test.
 
 ```{r}
-# my_aov <- aov(polarity_score ~ as.factor(review_rating), data = hotel_tidy_polarity_bing)
-# my_anova <- anova(my_aov)
-# tidy(my_anova)
-# plot(TukeyHSD(my_aov))
-# 
-# my_lm <- lm(polarity_score ~ as.factor(review_rating), data = hotel_tidy_polarity_bing)
-# summary(my_lm)
-# 
-# tbl_regression(my_lm)
+my_aov <- aov(polarity_score ~ as.factor(review_rating), data = hotel_tidy_polarity_bing)
+my_anova <- anova(my_aov)
+tidy(my_anova)
+plot(TukeyHSD(my_aov))
+
+my_lm <- lm(polarity_score ~ as.factor(review_rating), data = hotel_tidy_polarity_bing)
+summary(my_lm)
+
+tbl_regression(my_lm)
 ```
