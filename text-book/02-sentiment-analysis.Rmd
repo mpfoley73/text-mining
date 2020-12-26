@@ -576,7 +576,7 @@ Since this is a comparison of a numeric outcome to a multinominal predictor (`pr
 my_aov <- aov(polarity_score ~ as.factor(review_rating), data = hotel_tidy_polarity_bing)
 my_anova <- anova(my_aov)
 tidy(my_anova)
-plot(TukeyHSD(my_aov))
+#plot(TukeyHSD(my_aov))
 
 my_lm <- lm(polarity_score ~ as.factor(review_rating), data = hotel_tidy_polarity_bing)
 summary(my_lm)
